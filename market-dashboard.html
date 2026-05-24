@@ -380,6 +380,58 @@
     line-height: 1.8;
   }
 
+  /* Drawdown Box */
+  .dd-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .dd-title { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 16px; }
+  .dd-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 12px; }
+  .dd-card { background: var(--surface2); border: 1px solid var(--border); padding: 14px 16px; }
+  .dd-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .dd-ticker { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .dd-price-row { display: flex; align-items: center; gap: 8px; }
+  .dd-val { font-family: var(--mono); font-size: 22px; font-weight: 700; }
+  .dd-label { font-size: 10px; margin-top: 2px; }
+  .dd-bar-track { height: 4px; background: var(--border); margin-bottom: 6px; }
+  .dd-bar-fill { height: 100%; width: 0%; transition: width 0.8s ease, background 0.5s; }
+  .dd-hint { font-family: var(--mono); font-size: 8px; color: var(--text-muted); letter-spacing: 0.03em; }
+  .dd-guide { font-family: var(--mono); font-size: 9px; color: var(--text-muted); text-align: center; letter-spacing: 0.05em; padding-top: 8px; border-top: 1px solid var(--border); }
+  @media (max-width: 600px) { .dd-grid { grid-template-columns: 1fr; } }
+
+  /* GSR Box */
+  .gsr-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .gsr-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  .gsr-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.2em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 3px; }
+  .gsr-sub { font-size: 11px; color: var(--text-muted); }
+  .gsr-main { display: flex; align-items: center; gap: 24px; margin-bottom: 16px; }
+  .gsr-number-wrap { display: flex; align-items: baseline; gap: 4px; flex-shrink: 0; }
+  .gsr-val { font-family: var(--mono); font-size: 48px; font-weight: 700; line-height: 1; }
+  .gsr-unit { font-family: var(--mono); font-size: 16px; color: var(--text-dim); }
+  .gsr-track { flex: 1; }
+  .gsr-bar-wrap { margin-bottom: 8px; }
+  .gsr-bar-bg { display: flex; height: 8px; border-radius: 0; overflow: hidden; margin-bottom: 4px; }
+  .gsr-zone { flex: 1; }
+  .zone-red    { background: var(--red);    opacity: 0.5; }
+  .zone-orange { background: var(--orange); opacity: 0.5; }
+  .zone-yellow { background: var(--yellow); opacity: 0.5; }
+  .zone-green  { background: var(--green);  opacity: 0.5; }
+  .gsr-labels { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--text-muted); }
+  .gsr-note { font-size: 12px; color: var(--text-dim); line-height: 1.4; }
+  .gsr-prices { display: flex; align-items: center; gap: 20px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .gsr-price-item { display: flex; align-items: center; gap: 8px; }
+  .gsr-price-label { font-family: var(--mono); font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em; }
+  .gsr-price-val { font-family: var(--mono); font-size: 14px; font-weight: 700; }
+  .gsr-price-chg { font-family: var(--mono); font-size: 11px; }
+  .gsr-guide { font-family: var(--mono); font-size: 9px; color: var(--text-muted); margin-left: auto; letter-spacing: 0.05em; }
+
   /* Alerts */
   .alerts-section { margin-bottom: 20px; }
   .alert-item {
@@ -508,6 +560,99 @@
       <div class="signal-label">QQQ · 纳斯达克</div>
       <div class="signal-value" id="qqq-val">--</div>
       <div class="signal-note" id="qqq-note">科技/成长风险偏好</div>
+    </div>
+  </div>
+
+  <!-- QQQ + VOO Drawdown -->
+  <div class="dd-box">
+    <div class="dd-title">核心持仓 · 距历史高点回调幅度</div>
+    <div class="dd-grid">
+      <div class="dd-card">
+        <div class="dd-card-header">
+          <div>
+            <div class="dd-ticker">QQQ <span style="font-size:10px;color:var(--text-muted)">纳斯达克100</span></div>
+            <div class="dd-price-row">
+              <span id="qqq-price2" style="font-family:var(--mono);font-size:14px;color:var(--text)">--</span>
+              <span id="qqq-chg2" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">--</span>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="dd-val" id="qqq-dd">--</div>
+            <div class="dd-label" id="qqq-dd-label">--</div>
+          </div>
+        </div>
+        <div class="dd-bar-track"><div class="dd-bar-fill" id="qqq-dd-bar"></div></div>
+        <div class="dd-hint">0% ── 5% 接近高点 ── 10% 小幅回调 ── 20% 中度回调 ── 30%+</div>
+      </div>
+      <div class="dd-card">
+        <div class="dd-card-header">
+          <div>
+            <div class="dd-ticker">VOO <span style="font-size:10px;color:var(--text-muted)">标普500</span></div>
+            <div class="dd-price-row">
+              <span id="voo-price" style="font-family:var(--mono);font-size:14px;color:var(--text)">--</span>
+              <span id="voo-chg" style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">--</span>
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div class="dd-val" id="voo-dd">--</div>
+            <div class="dd-label" id="voo-dd-label">--</div>
+          </div>
+        </div>
+        <div class="dd-bar-track"><div class="dd-bar-fill" id="voo-dd-bar"></div></div>
+        <div class="dd-hint">0% ── 5% 接近高点 ── 10% 小幅回调 ── 20% 中度回调 ── 30%+</div>
+      </div>
+    </div>
+    <div class="dd-guide">
+      回调 &lt;5% 正常定投 &nbsp;·&nbsp; 回调 10% 场景二加仓信号 &nbsp;·&nbsp; 回调 20%+ 场景三积极加仓
+    </div>
+  </div>
+
+  <!-- Gold Silver Ratio -->
+  <div class="gsr-box" id="gsr-box">
+    <div class="gsr-header">
+      <div>
+        <div class="gsr-label">金银比 · Gold-Silver Ratio</div>
+        <div class="gsr-sub">你的持仓切换信号</div>
+      </div>
+      <div class="metric-status" id="gsr-signal" style="color:var(--text-dim); border-color:var(--text-dim); font-size:11px; padding: 4px 10px;">--</div>
+    </div>
+    <div class="gsr-main">
+      <div class="gsr-number-wrap">
+        <div class="gsr-val" id="gsr-val">--</div>
+        <div class="gsr-unit">: 1</div>
+      </div>
+      <div class="gsr-track">
+        <div class="gsr-bar-wrap">
+          <div class="gsr-bar-bg">
+            <div class="gsr-zone zone-red"   title="切换GLD (<55)"></div>
+            <div class="gsr-zone zone-orange" title="考虑切换 (55-65)"></div>
+            <div class="gsr-zone zone-yellow" title="观察区间 (65-80)"></div>
+            <div class="gsr-zone zone-green"  title="持有白银 (>80)"></div>
+          </div>
+          <div class="gsr-labels">
+            <span>55</span><span>65</span><span>80</span><span>100+</span>
+          </div>
+        </div>
+        <div class="gsr-note" id="gsr-note">--</div>
+      </div>
+    </div>
+    <div class="gsr-prices">
+      <div class="gsr-price-item">
+        <span class="gsr-price-label">SLV</span>
+        <span class="gsr-price-val" id="slv-price">--</span>
+        <span class="gsr-price-chg" id="slv-chg">--</span>
+      </div>
+      <div class="gsr-price-item">
+        <span class="gsr-price-label">GLD</span>
+        <span class="gsr-price-val" id="gld-price">--</span>
+        <span class="gsr-price-chg" id="gld-chg">--</span>
+      </div>
+      <div class="gsr-guide">
+        <span style="color:var(--green)">▌</span> >80 持有SLV &nbsp;
+        <span style="color:var(--yellow)">▌</span> 65-80 观察 &nbsp;
+        <span style="color:var(--orange)">▌</span> 55-65 分批换GLD &nbsp;
+        <span style="color:var(--red)">▌</span> <55 切换GLD
+      </div>
     </div>
   </div>
 
@@ -645,9 +790,9 @@ async function fetchWithProxy(url) {
   throw new Error('all proxies failed');
 }
 
-async function fetchYahoo(symbol) {
+async function fetchYahoo(symbol, range='5d') {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`;
     const res = await fetchWithProxy(url);
     const data = await res.json();
     const result = data.chart?.result?.[0];
@@ -690,14 +835,17 @@ async function loadData() {
 
   const errors = [];
 
-  const [vixData, spyData, hygData, jnkData, dxyData, qqqData, fgData] = await Promise.all([
+  const [vixData, spyData, hygData, jnkData, dxyData, qqqData, fgData, gldData, slvData, vooData] = await Promise.all([
     fetchYahoo('^VIX'),
     fetchYahoo('SPY'),
     fetchYahoo('HYG'),
     fetchYahoo('JNK'),
     fetchYahoo('DX-Y.NYB'),
     fetchYahoo('QQQ'),
-    fetchFearGreed()
+    fetchFearGreed(),
+    fetchYahoo('GLD'),
+    fetchYahoo('SLV'),
+    fetchYahoo('VOO')
   ]);
 
   // VIX
@@ -755,12 +903,13 @@ async function loadData() {
     setColor('jnk-note', jnkData.change !== null && jnkData.change < -1.5 ? 'var(--red)' : 'var(--text-dim)');
   } else { setText('jnk-val', 'N/A'); }
 
-  // DXY
+  // DXY — neutral color; only warn if >1.5% spike
   if (dxyData.price !== null) {
+    const dxyAlert = dxyData.change !== null && dxyData.change > 1.5;
     setText('dxy-val', dxyData.price.toFixed(2));
-    setColor('dxy-val', colorForChange(dxyData.change ? -dxyData.change : null));
-    setText('dxy-note', fmtChange(dxyData.change) + ' · ' + (dxyData.change !== null && dxyData.change > 1 ? '⚠ 避险升温' : '正常'));
-    setColor('dxy-note', dxyData.change !== null && dxyData.change > 1 ? 'var(--orange)' : 'var(--text-dim)');
+    setColor('dxy-val', dxyAlert ? 'var(--orange)' : 'var(--text-dim)');
+    setText('dxy-note', fmtChange(dxyData.change) + ' · ' + (dxyAlert ? '⚠ 避险升温' : '正常'));
+    setColor('dxy-note', dxyAlert ? 'var(--orange)' : 'var(--text-dim)');
   } else { setText('dxy-val', 'N/A'); }
 
   // QQQ
@@ -769,7 +918,99 @@ async function loadData() {
     setColor('qqq-val', colorForChange(qqqData.change));
     setText('qqq-note', fmtChange(qqqData.change) + ' 较昨日');
     setColor('qqq-note', colorForChange(qqqData.change));
+    // mirror to drawdown panel header
+    setText('qqq-price2', '$' + qqqData.price.toFixed(2));
+    setColor('qqq-price2', colorForChange(qqqData.change));
+    setText('qqq-chg2', fmtChange(qqqData.change));
+    setColor('qqq-chg2', colorForChange(qqqData.change));
   } else { setText('qqq-val', 'N/A'); }
+
+  // QQQ + VOO drawdown from 52w high
+  async function fetchDrawdown(symbol) {
+    try {
+      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
+      const res = await fetchWithProxy(url);
+      const data = await res.json();
+      const closes = data.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(x => x != null);
+      if (!closes?.length) return null;
+      const high52w = Math.max(...closes);
+      const current = closes[closes.length - 1];
+      const drawdown = ((current - high52w) / high52w) * 100;
+      return { current, high52w, drawdown };
+    } catch(e) { return null; }
+  }
+
+  const [qqqDD, vooDD] = await Promise.all([fetchDrawdown('QQQ'), fetchDrawdown('VOO')]);
+
+  function renderDrawdown(ddData, priceId, chgId, ddId, ddBarId, ddLabelId) {
+    if (!ddData) return;
+    const { current, high52w, drawdown } = ddData;
+    const absDD = Math.abs(drawdown);
+    const color = absDD < 5 ? 'var(--green)' : absDD < 10 ? 'var(--yellow)' : absDD < 20 ? 'var(--orange)' : 'var(--red)';
+    const label = absDD < 5 ? '接近高点' : absDD < 10 ? '小幅回调' : absDD < 20 ? '中度回调 / 加仓区' : '深度回调 / 积极加仓';
+    document.getElementById(ddId).textContent = drawdown.toFixed(1) + '%';
+    document.getElementById(ddId).style.color = color;
+    document.getElementById(ddLabelId).textContent = label;
+    document.getElementById(ddLabelId).style.color = color;
+    // bar width: drawdown as % of 30% max
+    const barW = Math.min(absDD / 30 * 100, 100);
+    document.getElementById(ddBarId).style.width = barW + '%';
+    document.getElementById(ddBarId).style.background = color;
+  }
+
+  renderDrawdown(qqqDD, 'qqq-price2', 'qqq-chg2', 'qqq-dd', 'qqq-dd-bar', 'qqq-dd-label');
+  renderDrawdown(vooDD, 'voo-price2', 'voo-chg2', 'voo-dd', 'voo-dd-bar', 'voo-dd-label');
+
+  // VOO current price
+  if (vooData.price !== null) {
+    setText('voo-price', '$' + vooData.price.toFixed(2));
+    setColor('voo-price', colorForChange(vooData.change));
+    setText('voo-chg', fmtChange(vooData.change));
+    setColor('voo-chg', colorForChange(vooData.change));
+  }
+
+  // Gold-Silver Ratio
+  if (gldData.price !== null && slvData.price !== null) {
+    // GLD tracks 1/10 oz gold, SLV tracks ~1 oz silver — ratio = GLD*10 / SLV
+    const goldPrice = gldData.price * 10;
+    const silverPrice = slvData.price;
+    const gsr = goldPrice / silverPrice;
+    const gsrEl = document.getElementById('gsr-val');
+    const gsrNote = document.getElementById('gsr-note');
+    const gsrSignal = document.getElementById('gsr-signal');
+    gsrEl.textContent = gsr.toFixed(1);
+
+    let gsrColor, signal, note;
+    if (gsr > 80) {
+      gsrColor = 'var(--green)'; signal = '持有白银';
+      note = '白银相对黄金偏便宜，继续持有SLV';
+    } else if (gsr > 65) {
+      gsrColor = 'var(--yellow)'; signal = '观察区间';
+      note = '接近历史均值，可开始分批换GLD';
+    } else if (gsr > 55) {
+      gsrColor = 'var(--orange)'; signal = '考虑切换';
+      note = '白银相对高估，建议大部分换入GLD';
+    } else {
+      gsrColor = 'var(--red)'; signal = '切换GLD';
+      note = '白银明显高估，白银超额收益已基本兑现';
+    }
+
+    gsrEl.style.color = gsrColor;
+    gsrNote.textContent = note;
+    gsrSignal.textContent = signal;
+    gsrSignal.style.color = gsrColor;
+    gsrSignal.style.borderColor = gsrColor;
+
+    // Show SLV and GLD prices too
+    setText('slv-price', '$' + slvData.price.toFixed(2));
+    setColor('slv-price', colorForChange(slvData.change));
+    setText('slv-chg', fmtChange(slvData.change));
+    setColor('slv-chg', colorForChange(slvData.change));
+    setText('gld-price', '$' + gldData.price.toFixed(2));
+    setColor('gld-price', colorForChange(gldData.change));
+    setText('gld-chg', fmtChange(gldData.change));
+    setColor('gld-chg', colorForChange(gldData.change));
+  }
 
   // Scene determination
   const vix = vixData.price;
