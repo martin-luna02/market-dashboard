@@ -380,6 +380,20 @@
     line-height: 1.8;
   }
 
+  /* Alerts */
+  .alerts-section { margin-bottom: 20px; }
+  .alert-item {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 16px; margin-bottom: 8px;
+    border: 1px solid; border-radius: 0;
+  }
+  .alert-red    { border-color: var(--red);    background: rgba(255,77,106,0.06); }
+  .alert-orange { border-color: var(--orange); background: rgba(255,140,66,0.06); }
+  .alert-blue   { border-color: var(--blue);   background: rgba(77,159,255,0.06); }
+  .alert-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+  .alert-label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim); margin-bottom: 3px; text-transform: uppercase; }
+  .alert-msg { font-size: 13px; color: var(--text); line-height: 1.4; }
+
   /* Animations */
   .fade-in { animation: fadeIn 0.4s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -414,6 +428,14 @@
   </header>
 
   <div id="error-box" style="display:none"></div>
+
+  <!-- Notification button -->
+  <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+    <button class="refresh-btn" id="notif-btn" onclick="requestNotificationPermission()" style="border-color:var(--text-muted)">🔔 开启预警通知</button>
+  </div>
+
+  <!-- Alerts -->
+  <div class="alerts-section" id="alerts-container"></div>
 
   <!-- Current scene -->
   <div class="scene-banner fade-in" id="scene-banner" style="--scene-color: var(--green)">
@@ -785,11 +807,56 @@ async function loadData() {
     document.getElementById('error-box').innerHTML = `<div class="error-note">⚠ 以下数据拉取失败（可能是跨域限制）：${errors.join('、')}。请稍后刷新。</div>`;
   }
 
+  // Alert check
+  checkAlerts({ vix, fg, spyChange: spyData.change, hygChange: hygData.change, jnkChange: jnkData.change, dxyChange: dxyData.change });
+
   document.getElementById('loader').style.display = 'none';
   const app = document.getElementById('app');
   app.style.opacity = '1';
   app.style.transition = 'opacity 0.4s ease';
 }
+
+const ALERT_RULES = [
+  { id: 'vix_30',  label: 'VIX 超过 30',             check: d => d.vix !== null && d.vix > 30,            level: 'red',    msg: d => `VIX 当前 ${d.vix.toFixed(1)}，市场进入极度恐慌区间` },
+  { id: 'vix_25',  label: 'VIX 超过 25',             check: d => d.vix !== null && d.vix > 25,            level: 'orange', msg: d => `VIX 当前 ${d.vix.toFixed(1)}，恐慌升温，开始留意` },
+  { id: 'fg_25',   label: '恐惧贪婪跌破 25',         check: d => d.fg !== null && d.fg <= 25,             level: 'red',    msg: d => `恐惧贪婪指数 ${d.fg}，进入极度恐惧区间` },
+  { id: 'fg_75',   label: '恐惧贪婪超过 75',         check: d => d.fg !== null && d.fg >= 75,             level: 'blue',   msg: d => `恐惧贪婪指数 ${d.fg}，市场过度贪婪，考虑减仓` },
+  { id: 'spy_5',   label: 'SPY 单日跌超 5%',         check: d => d.spyChange !== null && d.spyChange < -5, level: 'red',   msg: d => `SPY 单日下跌 ${d.spyChange.toFixed(2)}%，进入警戒区间` },
+  { id: 'hyg_red', label: 'HYG 跌超 2%（信用压力）', check: d => d.hygChange !== null && d.hygChange < -2, level: 'red',  msg: d => `HYG 下跌 ${d.hygChange.toFixed(2)}%，信用市场出现压力` },
+  { id: 'dxy_up',  label: '美元指数单日涨超 1.5%',   check: d => d.dxyChange !== null && d.dxyChange > 1.5, level: 'orange', msg: d => `美元指数单日上涨 ${d.dxyChange.toFixed(2)}%，避险情绪升温` },
+];
+
+function checkAlerts(data) {
+  const triggered = ALERT_RULES.filter(r => r.check(data));
+  const container = document.getElementById('alerts-container');
+  if (triggered.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = triggered.map(r => `
+    <div class="alert-item alert-${r.level}">
+      <span class="alert-icon">${r.level === 'red' ? '🔴' : r.level === 'orange' ? '🟠' : '🔵'}</span>
+      <div><div class="alert-label">${r.label}</div><div class="alert-msg">${r.msg(data)}</div></div>
+    </div>
+  `).join('');
+  if ('Notification' in window && Notification.permission === 'granted') {
+    triggered.forEach(r => new Notification('市场情绪预警', { body: r.msg(data) }));
+  }
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    const perm = await Notification.requestPermission();
+    const btn = document.getElementById('notif-btn');
+    btn.textContent = perm === 'granted' ? '🔔 通知已开启' : '🔕 通知已拒绝';
+    btn.style.color = perm === 'granted' ? 'var(--green)' : 'var(--text-dim)';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('notif-btn');
+  if (!('Notification' in window)) { btn.style.display = 'none'; return; }
+  if (Notification.permission === 'granted') { btn.textContent = '🔔 通知已开启'; btn.style.color = 'var(--green)'; }
+  if (Notification.permission === 'denied') { btn.textContent = '🔕 通知已拒绝'; btn.style.color = 'var(--text-dim)'; }
+});
 
 loadData();
 </script>
