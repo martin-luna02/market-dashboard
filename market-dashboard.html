@@ -822,6 +822,20 @@ async function fetchFearGreed() {
   }
 }
 
+async function fetchDrawdown(symbol) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
+    const res = await fetchWithProxy(url);
+    const data = await res.json();
+    const closes = data.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(x => x != null);
+    if (!closes?.length) return null;
+    const high52w = Math.max(...closes);
+    const current = closes[closes.length - 1];
+    const drawdown = ((current - high52w) / high52w) * 100;
+    return { current, high52w, drawdown };
+  } catch(e) { return null; }
+}
+
 function setText(id, val) { document.getElementById(id).textContent = val; }
 function setColor(id, color) { document.getElementById(id).style.color = color; }
 
@@ -926,20 +940,6 @@ async function loadData() {
   } else { setText('qqq-val', 'N/A'); }
 
   // QQQ + VOO drawdown from 52w high
-  async function fetchDrawdown(symbol) {
-    try {
-      const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
-      const res = await fetchWithProxy(url);
-      const data = await res.json();
-      const closes = data.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(x => x != null);
-      if (!closes?.length) return null;
-      const high52w = Math.max(...closes);
-      const current = closes[closes.length - 1];
-      const drawdown = ((current - high52w) / high52w) * 100;
-      return { current, high52w, drawdown };
-    } catch(e) { return null; }
-  }
-
   const [qqqDD, vooDD] = await Promise.all([fetchDrawdown('QQQ'), fetchDrawdown('VOO')]);
 
   function renderDrawdown(ddData, priceId, chgId, ddId, ddBarId, ddLabelId) {
