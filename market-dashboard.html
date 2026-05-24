@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>市场情绪早报</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f4ef;
+    --surface: #ffffff;
+    --surface2: #f0ece4;
+    --border: #e2dbd0;
+    --text: #2c2825;
+    --text-dim: #7a6f65;
+    --text-muted: #b8aea2;
+    --green: #1a9e72;
+    --red: #d94055;
+    --yellow: #c8960a;
+    --orange: #d46a1a;
+    --blue: #2b78c8;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Noto Sans SC', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  /* Subtle dot texture */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(circle, #c8bfb0 1px, transparent 1px);
+    background-size: 28px 28px;
+    opacity: 0.3;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left h1 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .header-left .date {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--text);
+    letter-spacing: -0.02em;
+  }
+
+  .header-right {
+    text-align: right;
+  }
+
+  .refresh-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 8px 14px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .last-update {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  /* Scene banner */
+  .scene-banner {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.5s;
+  }
+
+  .scene-banner::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--scene-color, var(--green));
+  }
+
+  .scene-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .scene-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--scene-color, var(--green));
+    margin-bottom: 8px;
+  }
+
+  .scene-action {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+  }
+
+  /* Metrics grid */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    position: relative;
+  }
+
+  .metric-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .metric-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .metric-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  .metric-status {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 0.1em;
+    padding: 2px 6px;
+    border: 1px solid currentColor;
+    text-transform: uppercase;
+  }
+
+  /* Gauge */
+  .gauge-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .gauge-svg { width: 100%; max-width: 140px; }
+
+  /* Signal row */
+  .signals-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .signal-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+
+  .signal-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .signal-value {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .signal-note {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
+  /* Action checklist */
+  .actions-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+
+  .actions-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .action-list { list-style: none; }
+
+  .action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+  }
+  .action-item:last-child { border-bottom: none; }
+
+  .action-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--scene-color, var(--green));
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+
+  /* Scenes reference */
+  .scenes-ref {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .scene-ref-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px 10px;
+    cursor: default;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+
+  .scene-ref-card.active {
+    border-color: var(--scene-color);
+  }
+
+  .scene-ref-card.active::after {
+    content: '▶ 当前';
+    position: absolute;
+    bottom: 6px;
+    right: 6px;
+    font-family: var(--mono);
+    font-size: 7px;
+    color: var(--scene-color);
+  }
+
+  .scene-ref-num {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .scene-ref-name {
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--text-dim);
+  }
+
+  .scene-ref-card.active .scene-ref-name {
+    color: var(--scene-color);
+  }
+
+  /* Loading */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: #f7f4ef;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .loading-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .loading-dots span {
+    display: inline-block;
+    width: 4px; height: 4px;
+    background: var(--green);
+    border-radius: 50%;
+    margin: 0 3px;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  /* Error */
+  .error-note {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    padding: 10px 14px;
+    border: 1px solid var(--red);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    line-height: 1.8;
+  }
+
+  /* Animations */
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 600px) {
+    body { padding: 16px; }
+    .metrics-grid { grid-template-columns: 1fr 1fr; }
+    .signals-row { grid-template-columns: 1fr 1fr; }
+    .scenes-ref { grid-template-columns: 1fr 1fr; }
+    .metric-value { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loader">
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+  <div class="loading-text">正在拉取市场数据（尝试多个通道）</div>
+</div>
+
+<div class="wrapper" id="app" style="opacity:0">
+
+  <header>
+    <div class="header-left">
+      <h1>Market Sentiment / 市场情绪早报</h1>
+      <div class="date" id="today-date">--</div>
+    </div>
+    <div class="header-right">
+      <button class="refresh-btn" onclick="loadData()">↻ 刷新数据</button>
+      <div class="last-update" id="last-update">--</div>
+    </div>
+  </header>
+
+  <div id="error-box" style="display:none"></div>
+
+  <!-- Current scene -->
+  <div class="scene-banner fade-in" id="scene-banner" style="--scene-color: var(--green)">
+    <div class="scene-label">当前场景判断</div>
+    <div class="scene-title" id="scene-title">--</div>
+    <div class="scene-action" id="scene-action">--</div>
+  </div>
+
+  <!-- Core metrics -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">VIX · 波动率指数</div>
+      <div class="metric-value" id="vix-val" style="color:var(--text)">--</div>
+      <div class="metric-sub" id="vix-sub">--</div>
+      <div class="metric-status" id="vix-status" style="color:var(--text-dim)">--</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">恐惧贪婪指数</div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div>
+          <div class="metric-value" id="fg-val" style="color:var(--text)">--</div>
+          <div class="metric-sub" id="fg-sub">--</div>
+        </div>
+        <svg class="gauge-svg" viewBox="0 0 120 65" id="gauge-svg">
+          <defs>
+            <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#ff4d6a"/>
+              <stop offset="30%" stop-color="#ff8c42"/>
+              <stop offset="50%" stop-color="#f5c842"/>
+              <stop offset="70%" stop-color="#a8d870"/>
+              <stop offset="100%" stop-color="#00d4a0"/>
+            </linearGradient>
+          </defs>
+          <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="#e2dbd0" stroke-width="10" stroke-linecap="round"/>
+          <path d="M10,60 A50,50 0 0,1 110,60" fill="none" stroke="url(#gaugeGrad)" stroke-width="10" stroke-linecap="round" opacity="0.7"/>
+          <line id="gauge-needle" x1="60" y1="60" x2="60" y2="18" stroke="#2c2825" stroke-width="1.5" stroke-linecap="round" transform="rotate(0, 60, 60)" opacity="0.9"/>
+          <circle cx="60" cy="60" r="4" fill="#f7f4ef" stroke="#2c2825" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="metric-status" id="fg-status" style="color:var(--text-dim)">--</div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-label">标普500 · SPY</div>
+      <div class="metric-value" id="spy-val" style="color:var(--text)">--</div>
+      <div class="metric-sub" id="spy-sub">--</div>
+      <div class="metric-status" id="spy-status" style="color:var(--text-dim)">--</div>
+    </div>
+  </div>
+
+  <!-- Secondary signals -->
+  <div class="signals-row">
+    <div class="signal-card">
+      <div class="signal-label">HYG · 高收益债</div>
+      <div class="signal-value" id="hyg-val">--</div>
+      <div class="signal-note" id="hyg-note">信用市场健康度</div>
+    </div>
+    <div class="signal-card">
+      <div class="signal-label">JNK · 垃圾债</div>
+      <div class="signal-value" id="jnk-val">--</div>
+      <div class="signal-note" id="jnk-note">信用扩散信号</div>
+    </div>
+    <div class="signal-card">
+      <div class="signal-label">DXY · 美元指数</div>
+      <div class="signal-value" id="dxy-val">--</div>
+      <div class="signal-note" id="dxy-note">避险情绪参考</div>
+    </div>
+    <div class="signal-card">
+      <div class="signal-label">QQQ · 纳斯达克</div>
+      <div class="signal-value" id="qqq-val">--</div>
+      <div class="signal-note" id="qqq-note">科技/成长风险偏好</div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions-box" id="actions-box">
+    <div class="actions-title">操作参考 / Playbook</div>
+    <ul class="action-list" id="action-list"></ul>
+  </div>
+
+  <!-- 5 Scenes reference -->
+  <div class="scenes-ref" id="scenes-ref"></div>
+
+  <footer>
+    数据来源：Yahoo Finance · CNN Fear &amp; Greed · 仅供参考，不构成投资建议<br>
+    VIX / HYG / JNK / DXY 均为近实时数据，恐惧贪婪指数每日更新
+  </footer>
+</div>
+
+<script>
+const SCENES = [
+  {
+    num: 1,
+    name: '正常回调\n可正常定投',
+    color: 'var(--green)',
+    title: '场景一：正常回调，可以正常定投',
+    action: '市场处于正常波动区间，信用市场稳定，按计划执行定投策略即可。',
+    actions: ['维持原定定投计划', '无需调整仓位', '关注VIX是否继续升温', '信用市场（HYG/JNK）保持正常即可']
+  },
+  {
+    num: 2,
+    name: '恐慌回调\n可分批加仓',
+    color: 'var(--yellow)',
+    title: '场景二：恐慌回调，分批加仓',
+    action: '市场恐慌升温，HYG/JNK未崩、美元未失控，这是加仓好时机——但分批执行，不一次all in。',
+    actions: ['第一笔：动用30%备用资金', 'VIX冲到30加第二笔30%', 'VIX高位回落、市场广度改善后补最后40%', '确认HYG/JNK未大跌才操作', '美元指数未暴涨才操作']
+  },
+  {
+    num: 3,
+    name: '极端恐慌\n关注抄底机会',
+    color: 'var(--orange)',
+    title: '场景三：极端恐慌，强烈关注抄底机会',
+    action: '极端恐慌是历史上最好的买入区间，但好区间不等于all in——信用市场稳定、银行体系正常是前提。',
+    actions: ['逆向买入，但不要all in', '优先买核心资产（宽基ETF）', '买现金流强的公司', '保留一部分现金备用', '确认信用市场未全面冻结']
+  },
+  {
+    num: 4,
+    name: '系统性风险\n先防守',
+    color: 'var(--red)',
+    title: '场景四：系统性风险信号，先防守',
+    action: '出现系统性风险信号——VIX持续高位不回、信用利差快速扩大、HYG/JNK大跌。现金为王，等待信号稳定。',
+    actions: ['不要急着抄底', '降低杠杆至零', '减少高Beta持仓', '保留现金', '等待信用市场稳定再动']
+  },
+  {
+    num: 5,
+    name: '过度贪婪\n考虑减仓',
+    color: 'var(--blue)',
+    title: '场景五：过度贪婪，降低进攻性',
+    action: '市场过热，VIX长期低位、散户极度乐观、估值偏高、新手开始加杠杆——是减仓信号。',
+    actions: ['卖掉涨太多的个股', '转向核心资产（宽基ETF）', '卖Covered Call锁定收益', '保留现金等待回调', '不要追高加杠杆']
+  }
+];
+
+function getSceneFromData(vix, fg, spyChange, hygChange, jnkChange, dxyChange) {
+  // Scene 4 first — systemic risk overrides everything
+  const creditStress = (hygChange !== null && hygChange < -2) || (jnkChange !== null && jnkChange < -2);
+  const dxySpike = dxyChange !== null && dxyChange > 1.5;
+  if (vix > 35 && (creditStress || dxySpike)) return 4;
+
+  // Scene 3: extreme fear
+  if (vix > 35 && fg <= 20 && !creditStress) return 3;
+
+  // Scene 2: fear pullback
+  if (vix > 25 && fg <= 30 && spyChange !== null && spyChange < -5) return 2;
+
+  // Scene 5: excess greed
+  if (vix < 15 && fg > 72) return 5;
+
+  // Scene 1: normal
+  return 1;
+}
+
+function colorForChange(val) {
+  if (val === null || val === undefined || isNaN(val)) return 'var(--text-dim)';
+  return val >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+function fmtChange(val, decimals = 2) {
+  if (val === null || isNaN(val)) return '--';
+  return (val >= 0 ? '+' : '') + val.toFixed(decimals) + '%';
+}
+
+function rotateNeedle(score) {
+  // score 0-100 → angle -90 to +90
+  const angle = (score / 100) * 180 - 90;
+  document.getElementById('gauge-needle').setAttribute('transform', `rotate(${angle}, 60, 60)`);
+}
+
+function fgLabel(score) {
+  if (score <= 25) return '极度恐惧';
+  if (score <= 45) return '恐惧';
+  if (score <= 55) return '中性';
+  if (score <= 75) return '贪婪';
+  return '极度贪婪';
+}
+
+function vixLabel(vix) {
+  if (vix < 15) return ['自满区间', 'var(--blue)'];
+  if (vix < 20) return ['正常波动', 'var(--green)'];
+  if (vix < 25) return ['波动升温', 'var(--yellow)'];
+  if (vix < 30) return ['恐慌升温', 'var(--orange)'];
+  if (vix < 40) return ['极端恐慌', 'var(--red)'];
+  return ['极端恐慌', 'var(--red)'];
+}
+
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+async function fetchWithProxy(url) {
+  // Try direct first
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) return res;
+  } catch(e) {}
+
+  // Try each proxy
+  for (const proxy of PROXIES) {
+    try {
+      const res = await fetch(proxy(url), { signal: AbortSignal.timeout(6000) });
+      if (res.ok) return res;
+    } catch(e) {}
+  }
+  throw new Error('all proxies failed');
+}
+
+async function fetchYahoo(symbol) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+    const res = await fetchWithProxy(url);
+    const data = await res.json();
+    const result = data.chart?.result?.[0];
+    if (!result) throw new Error('no result');
+    const closes = result.indicators?.quote?.[0]?.close;
+    const latest = closes?.filter(x => x != null);
+    if (!latest?.length) throw new Error('no data');
+    const price = latest[latest.length - 1];
+    const prev = latest.length > 1 ? latest[latest.length - 2] : null;
+    const change = prev ? ((price - prev) / prev) * 100 : null;
+    return { price, change };
+  } catch(e) {
+    return { price: null, change: null, error: e.message };
+  }
+}
+
+async function fetchFearGreed() {
+  try {
+    const url = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
+    const res = await fetchWithProxy(url);
+    const data = await res.json();
+    const score = Math.round(data?.fear_and_greed?.score ?? data?.score);
+    if (isNaN(score)) throw new Error('bad score');
+    return { score };
+  } catch(e) {
+    return { score: null, error: e.message };
+  }
+}
+
+function setText(id, val) { document.getElementById(id).textContent = val; }
+function setColor(id, color) { document.getElementById(id).style.color = color; }
+
+async function loadData() {
+  document.getElementById('loader').style.display = 'flex';
+  document.getElementById('error-box').style.display = 'none';
+
+  const now = new Date();
+  document.getElementById('today-date').textContent = now.toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+  document.getElementById('last-update').textContent = '更新于 ' + now.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' });
+
+  const errors = [];
+
+  const [vixData, spyData, hygData, jnkData, dxyData, qqqData, fgData] = await Promise.all([
+    fetchYahoo('^VIX'),
+    fetchYahoo('SPY'),
+    fetchYahoo('HYG'),
+    fetchYahoo('JNK'),
+    fetchYahoo('DX-Y.NYB'),
+    fetchYahoo('QQQ'),
+    fetchFearGreed()
+  ]);
+
+  // VIX
+  if (vixData.price !== null) {
+    const [label, color] = vixLabel(vixData.price);
+    setText('vix-val', vixData.price.toFixed(1));
+    setColor('vix-val', color);
+    setText('vix-sub', fmtChange(vixData.change) + ' 较昨日');
+    setColor('vix-sub', colorForChange(vixData.change ? -vixData.change : null));
+    setText('vix-status', label);
+    setColor('vix-status', color);
+  } else {
+    setText('vix-val', 'N/A'); errors.push('VIX');
+  }
+
+  // Fear & Greed
+  const fg = fgData.score;
+  if (fg !== null) {
+    const fgColor = fg <= 25 ? 'var(--red)' : fg <= 45 ? 'var(--orange)' : fg <= 55 ? 'var(--yellow)' : fg <= 75 ? 'var(--green)' : 'var(--blue)';
+    setText('fg-val', fg);
+    setColor('fg-val', fgColor);
+    setText('fg-sub', fgLabel(fg));
+    setColor('fg-sub', fgColor);
+    setText('fg-status', fg + '/100');
+    setColor('fg-status', fgColor);
+    rotateNeedle(fg);
+  } else {
+    setText('fg-val', 'N/A'); errors.push('恐惧贪婪');
+  }
+
+  // SPY
+  if (spyData.price !== null) {
+    setText('spy-val', '$' + spyData.price.toFixed(2));
+    setColor('spy-val', colorForChange(spyData.change));
+    setText('spy-sub', fmtChange(spyData.change) + ' 较昨日');
+    setColor('spy-sub', colorForChange(spyData.change));
+    const spyNote = spyData.change !== null && spyData.change < -5 ? '警戒：回调超5%' : spyData.change !== null && spyData.change < -3 ? '注意：回调3-5%' : '正常范围';
+    setText('spy-status', spyNote);
+    setColor('spy-status', spyData.change !== null && spyData.change < -3 ? 'var(--orange)' : 'var(--green)');
+  } else { setText('spy-val', 'N/A'); errors.push('SPY'); }
+
+  // HYG
+  if (hygData.price !== null) {
+    setText('hyg-val', '$' + hygData.price.toFixed(2));
+    setColor('hyg-val', colorForChange(hygData.change));
+    setText('hyg-note', fmtChange(hygData.change) + ' · ' + (hygData.change !== null && hygData.change < -1.5 ? '⚠ 信用压力' : '正常'));
+    setColor('hyg-note', hygData.change !== null && hygData.change < -1.5 ? 'var(--red)' : 'var(--text-dim)');
+  } else { setText('hyg-val', 'N/A'); }
+
+  // JNK
+  if (jnkData.price !== null) {
+    setText('jnk-val', '$' + jnkData.price.toFixed(2));
+    setColor('jnk-val', colorForChange(jnkData.change));
+    setText('jnk-note', fmtChange(jnkData.change) + ' · ' + (jnkData.change !== null && jnkData.change < -1.5 ? '⚠ 风险信号' : '稳定'));
+    setColor('jnk-note', jnkData.change !== null && jnkData.change < -1.5 ? 'var(--red)' : 'var(--text-dim)');
+  } else { setText('jnk-val', 'N/A'); }
+
+  // DXY
+  if (dxyData.price !== null) {
+    setText('dxy-val', dxyData.price.toFixed(2));
+    setColor('dxy-val', colorForChange(dxyData.change ? -dxyData.change : null));
+    setText('dxy-note', fmtChange(dxyData.change) + ' · ' + (dxyData.change !== null && dxyData.change > 1 ? '⚠ 避险升温' : '正常'));
+    setColor('dxy-note', dxyData.change !== null && dxyData.change > 1 ? 'var(--orange)' : 'var(--text-dim)');
+  } else { setText('dxy-val', 'N/A'); }
+
+  // QQQ
+  if (qqqData.price !== null) {
+    setText('qqq-val', '$' + qqqData.price.toFixed(2));
+    setColor('qqq-val', colorForChange(qqqData.change));
+    setText('qqq-note', fmtChange(qqqData.change) + ' 较昨日');
+    setColor('qqq-note', colorForChange(qqqData.change));
+  } else { setText('qqq-val', 'N/A'); }
+
+  // Scene determination
+  const vix = vixData.price;
+  const sceneIdx = vix !== null ? getSceneFromData(
+    vix, fg,
+    spyData.change, hygData.change, jnkData.change, dxyData.change
+  ) : 1;
+
+  const scene = SCENES[sceneIdx - 1];
+
+  // Update banner
+  const banner = document.getElementById('scene-banner');
+  banner.style.setProperty('--scene-color', scene.color);
+  setText('scene-title', scene.title);
+  setText('scene-action', scene.action);
+
+  // Actions
+  const actionList = document.getElementById('action-list');
+  actionList.innerHTML = scene.actions.map(a =>
+    `<li class="action-item"><div class="action-dot" style="background:${scene.color}"></div><span>${a}</span></li>`
+  ).join('');
+
+  // Scenes reference
+  const scenesRef = document.getElementById('scenes-ref');
+  scenesRef.innerHTML = SCENES.map(s =>
+    `<div class="scene-ref-card ${s.num === sceneIdx ? 'active' : ''}" style="--scene-color:${s.color}">
+      <div class="scene-ref-num">场景 ${s.num}</div>
+      <div class="scene-ref-name">${s.name}</div>
+    </div>`
+  ).join('');
+
+  // Error display
+  if (errors.length) {
+    document.getElementById('error-box').style.display = 'block';
+    document.getElementById('error-box').innerHTML = `<div class="error-note">⚠ 以下数据拉取失败（可能是跨域限制）：${errors.join('、')}。请稍后刷新。</div>`;
+  }
+
+  document.getElementById('loader').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.opacity = '1';
+  app.style.transition = 'opacity 0.4s ease';
+}
+
+loadData();
+</script>
+</body>
+</html>
