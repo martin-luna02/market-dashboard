@@ -494,7 +494,10 @@
       <div class="date" id="today-date">--</div>
     </div>
     <div class="header-right">
-      <button class="refresh-btn" onclick="loadData()">↻ 刷新数据</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <a href="macro-dashboard.html" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;letter-spacing:0.1em;padding:7px 12px;cursor:pointer;text-decoration:none;text-transform:uppercase;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--blue)';this.style.color='var(--blue)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text-dim)'">宏观页 →</a>
+        <button class="refresh-btn" onclick="loadData()">↻ 刷新数据</button>
+      </div>
       <div class="last-update" id="last-update">--</div>
     </div>
   </header>
@@ -552,10 +555,10 @@
     </div>
 
     <div class="metric-card">
-      <div class="metric-label">标普500 · SPY</div>
-      <div class="metric-value" id="spy-val" style="color:var(--text)">--</div>
-      <div class="metric-sub" id="spy-sub">--</div>
-      <div class="metric-status" id="spy-status" style="color:var(--text-dim)">--</div>
+      <div class="metric-label">BTC · 比特币</div>
+      <div class="metric-value" id="btc-val" style="color:#f7931a;font-size:22px">--</div>
+      <div class="metric-sub" id="btc-val-chg">--</div>
+      <div class="metric-status" id="btc-val-status" style="color:var(--text-dim)">--</div>
     </div>
   </div>
 
@@ -577,9 +580,9 @@
       <div class="signal-note" id="dxy-note">避险情绪参考</div>
     </div>
     <div class="signal-card">
-      <div class="signal-label">QQQ · 纳斯达克</div>
-      <div class="signal-value" id="qqq-val">--</div>
-      <div class="signal-note" id="qqq-note">科技/成长风险偏好</div>
+      <div class="signal-label">SPY · 标普500</div>
+      <div class="signal-value" id="spy-val">--</div>
+      <div class="signal-note" id="spy-note">--</div>
     </div>
   </div>
 
@@ -963,11 +966,9 @@ async function loadData() {
   if (spyData.price !== null) {
     setText('spy-val', '$' + spyData.price.toFixed(2));
     setColor('spy-val', colorForChange(spyData.change));
-    setText('spy-sub', fmtChange(spyData.change) + ' 较昨日');
-    setColor('spy-sub', colorForChange(spyData.change));
-    const spyNote = spyData.change !== null && spyData.change < -5 ? '警戒：回调超5%' : spyData.change !== null && spyData.change < -3 ? '注意：回调3-5%' : '正常范围';
-    setText('spy-status', spyNote);
-    setColor('spy-status', spyData.change !== null && spyData.change < -3 ? 'var(--orange)' : 'var(--green)');
+    const spyNote = fmtChange(spyData.change) + ' · ' + (spyData.change !== null && spyData.change < -5 ? '⚠ 警戒' : spyData.change !== null && spyData.change < -3 ? '注意回调' : '正常');
+    setText('spy-note', spyNote);
+    setColor('spy-note', spyData.change !== null && spyData.change < -3 ? 'var(--orange)' : 'var(--text-dim)');
   } else { setText('spy-val', 'N/A'); errors.push('SPY'); }
 
   // HYG
@@ -1040,10 +1041,20 @@ async function loadData() {
 
   // BTC
   if (btcData.price !== null) {
-    setText('btc-price', '$' + btcData.price.toLocaleString('en-US', {maximumFractionDigits: 0}));
-    setColor('btc-price', colorForChange(btcData.change));
-    setText('btc-chg', fmtChange(btcData.change));
-    setColor('btc-chg', colorForChange(btcData.change));
+    const btcFmt = '$' + btcData.price.toLocaleString('en-US', {maximumFractionDigits: 0});
+    const btcChgFmt = fmtChange(btcData.change);
+    const btcColor = colorForChange(btcData.change);
+    // metric card (top)
+    setText('btc-val', btcFmt);
+    setText('btc-val-chg', btcChgFmt + ' 较昨日');
+    setColor('btc-val-chg', btcColor);
+    setText('btc-val-status', btcData.change !== null && Math.abs(btcData.change) > 5 ? '高波动' : '正常');
+    setColor('btc-val-status', btcData.change !== null && Math.abs(btcData.change) > 5 ? 'var(--orange)' : 'var(--text-dim)');
+    // btc panel (below)
+    setText('btc-price', btcFmt);
+    setColor('btc-price', btcColor);
+    setText('btc-chg', btcChgFmt);
+    setColor('btc-chg', btcColor);
   }
   if (btcFgData.score !== null) {
     const bfg = btcFgData.score;
