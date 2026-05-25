@@ -847,9 +847,10 @@ async function fetchWithProxy(url) {
   throw new Error('all proxies failed');
 }
 
-async function fetchYahoo(symbol, range='5d') {
+async function fetchYahoo(symbol, period) {
+  period = period || '5d';
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${period}`;
     const res = await fetchWithProxy(url);
     const data = await res.json();
     const result = data.chart?.result?.[0];
@@ -996,18 +997,13 @@ async function loadData() {
     setColor('dxy-note', dxyAlert ? 'var(--orange)' : 'var(--text-dim)');
   } else { setText('dxy-val', 'N/A'); }
 
-  // QQQ
+  // QQQ — mirror to drawdown panel header only (signal card removed)
   if (qqqData.price !== null) {
-    setText('qqq-val', '$' + qqqData.price.toFixed(2));
-    setColor('qqq-val', colorForChange(qqqData.change));
-    setText('qqq-note', fmtChange(qqqData.change) + ' 较昨日');
-    setColor('qqq-note', colorForChange(qqqData.change));
-    // mirror to drawdown panel header
     setText('qqq-price2', '$' + qqqData.price.toFixed(2));
     setColor('qqq-price2', colorForChange(qqqData.change));
     setText('qqq-chg2', fmtChange(qqqData.change));
     setColor('qqq-chg2', colorForChange(qqqData.change));
-  } else { setText('qqq-val', 'N/A'); }
+  }
 
   // QQQ + VOO drawdown from 52w high
   const [qqqDD, vooDD, btcFgData] = await Promise.all([fetchDrawdown('QQQ'), fetchDrawdown('VOO'), fetchBtcFearGreed()]);

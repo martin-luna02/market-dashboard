@@ -7,19 +7,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0a0c10;
-    --surface: #111318;
-    --surface2: #1a1d24;
-    --border: #252830;
-    --text: #e8eaf0;
-    --text-dim: #6b7280;
-    --text-muted: #3d4148;
-    --green: #00d4a0;
-    --red: #ff4d6a;
-    --yellow: #f5c842;
-    --orange: #ff8c42;
-    --blue: #4d9fff;
-    --purple: #a78bfa;
+    --bg: #f5f4ef;
+    --surface: #ffffff;
+    --surface2: #eeede8;
+    --border: #dddcd6;
+    --text: #1a1a18;
+    --text-dim: #6b6b60;
+    --text-muted: #b0afa8;
+    --green: #00936e;
+    --red: #d93a52;
+    --yellow: #c49a00;
+    --orange: #c45e00;
+    --blue: #2563b0;
+    --purple: #6d40c4;
     --mono: 'Space Mono', monospace;
     --sans: 'Noto Sans SC', sans-serif;
   }
@@ -39,8 +39,8 @@
     position: fixed;
     inset: 0;
     background-image:
-      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
     background-size: 40px 40px;
     pointer-events: none;
     z-index: 0;
@@ -613,9 +613,10 @@ async function fetchWithProxy(url) {
   throw new Error('all proxies failed');
 }
 
-async function fetchYahoo(symbol, range='1mo') {
+async function fetchYahoo(symbol, period) {
+  period = period || '1mo';
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${range}`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${period}`;
     const res = await fetchWithProxy(url);
     const data = await res.json();
     const result = data.chart?.result?.[0];
@@ -797,8 +798,8 @@ async function loadData() {
     fetchYahoo('XLU', '1mo'),
   ]);
 
-  // Also fetch 2Y separately
-  const twoYData = await fetchYahoo('^IRX', '1mo');
+  // Use IRX from Promise.all as 2Y proxy
+  const twoYData = twoxData;
 
   // US10Y
   let us10y = null;
