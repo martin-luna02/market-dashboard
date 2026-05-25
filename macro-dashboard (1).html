@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>宏观驱动监控</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4ef;
+    --surface: #ffffff;
+    --surface2: #eeede8;
+    --border: #dddcd6;
+    --text: #1a1a18;
+    --text-dim: #6b6b60;
+    --text-muted: #b0afa8;
+    --green: #00936e;
+    --red: #d93a52;
+    --yellow: #c49a00;
+    --orange: #c45e00;
+    --blue: #2563b0;
+    --purple: #6d40c4;
+    --mono: 'Space Mono', monospace;
+    --sans: 'Noto Sans SC', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .header-left h1 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .header-left .date {
+    font-family: var(--mono);
+    font-size: 22px;
+    color: var(--text);
+  }
+
+  .header-nav {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .nav-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 7px 12px;
+    cursor: pointer;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    display: inline-block;
+  }
+  .nav-btn:hover { border-color: var(--blue); color: var(--blue); }
+  .nav-btn.active { border-color: var(--blue); color: var(--blue); background: rgba(77,159,255,0.08); }
+
+  .refresh-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 7px 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .last-update {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    text-align: right;
+  }
+
+  /* Phase banner */
+  .phase-banner {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .phase-banner::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--phase-color, var(--blue));
+  }
+
+  .phase-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .phase-grid {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .phase-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--phase-color, var(--blue));
+    margin-bottom: 6px;
+  }
+
+  .phase-desc {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    max-width: 500px;
+  }
+
+  .phase-signals {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .phase-signal-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-dim);
+  }
+
+  .phase-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* Macro grid — 2x3 */
+  .macro-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .macro-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 16px;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+
+  .macro-card.signal-warn { border-color: rgba(255,140,66,0.4); }
+  .macro-card.signal-danger { border-color: rgba(255,77,106,0.4); }
+  .macro-card.signal-good { border-color: rgba(0,212,160,0.3); }
+
+  .macro-ticker {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .macro-val {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .macro-chg {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-bottom: 10px;
+  }
+
+  /* Sparkline canvas */
+  .sparkline-wrap {
+    height: 36px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  canvas.sparkline {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .macro-status {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    border: 1px solid currentColor;
+    text-transform: uppercase;
+    display: inline-block;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+
+  .macro-note {
+    font-size: 11px;
+    color: var(--text-dim);
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+
+  /* Yield curve panel */
+  .yield-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+
+  .yield-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .yield-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .yield-item { }
+
+  .yield-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .yield-val {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .yield-chg {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-top: 4px;
+  }
+
+  .yield-spread-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .yield-spread-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .yield-spread-val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .yield-spread-note {
+    font-size: 12px;
+    color: var(--text-dim);
+    max-width: 400px;
+    line-height: 1.5;
+  }
+
+  /* Phase reference */
+  .phase-ref-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .phase-ref-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 14px;
+  }
+
+  .phase-ref-card.active {
+    border-color: var(--phase-color, var(--blue));
+  }
+
+  .phase-ref-name {
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-dim);
+  }
+
+  .phase-ref-card.active .phase-ref-name {
+    color: var(--phase-color, var(--blue));
+  }
+
+  .phase-ref-conditions {
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  /* Loading */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .loading-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+
+  .loading-dots span {
+    display: inline-block;
+    width: 4px; height: 4px;
+    background: var(--blue);
+    border-radius: 50%;
+    margin: 0 3px;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes pulse {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40% { opacity: 1; transform: scale(1); }
+  }
+
+  .error-note {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--red);
+    padding: 10px 14px;
+    border: 1px solid var(--red);
+    margin-bottom: 16px;
+    opacity: 0.8;
+  }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    line-height: 1.8;
+  }
+
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  @media (max-width: 600px) {
+    body { padding: 16px; }
+    .macro-grid { grid-template-columns: 1fr 1fr; }
+    .yield-grid { grid-template-columns: 1fr 1fr; }
+    .phase-ref-grid { grid-template-columns: 1fr; }
+    .macro-val { font-size: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loader">
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+  <div class="loading-text">拉取宏观数据中</div>
+</div>
+
+<div class="wrapper" id="app" style="opacity:0">
+
+  <header>
+    <div class="header-left">
+      <h1>Macro Driver / 宏观驱动监控</h1>
+      <div class="date" id="today-date">--</div>
+    </div>
+    <div class="header-right">
+      <div class="header-nav">
+        <a class="nav-btn" href="market-dashboard.html">← 情绪页</a>
+        <button class="refresh-btn" onclick="loadData()">↻ 刷新</button>
+      </div>
+      <div class="last-update" id="last-update">--</div>
+    </div>
+  </header>
+
+  <div id="error-box" style="display:none"></div>
+
+  <!-- Phase banner -->
+  <div class="phase-banner fade-in" id="phase-banner" style="--phase-color: var(--blue)">
+    <div class="phase-label">当前宏观阶段</div>
+    <div class="phase-grid">
+      <div>
+        <div class="phase-title" id="phase-title">--</div>
+        <div class="phase-desc" id="phase-desc">--</div>
+      </div>
+      <div class="phase-signals" id="phase-signals"></div>
+    </div>
+  </div>
+
+  <!-- 6 macro cards -->
+  <div class="macro-grid" id="macro-grid">
+
+    <!-- US10Y -->
+    <div class="macro-card" id="card-us10y">
+      <div class="macro-ticker">US10Y · 10年美债</div>
+      <div class="macro-val" id="us10y-val">--</div>
+      <div class="macro-chg" id="us10y-chg">--</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="spark-us10y"></canvas></div>
+      <div class="macro-status" id="us10y-status" style="color:var(--text-dim)">--</div>
+      <div class="macro-note" id="us10y-note">科技估值核心锚</div>
+    </div>
+
+    <!-- Copper -->
+    <div class="macro-card" id="card-copper">
+      <div class="macro-ticker">COPX · 铜矿ETF</div>
+      <div class="macro-val" id="copper-val">--</div>
+      <div class="macro-chg" id="copper-chg">--</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="spark-copper"></canvas></div>
+      <div class="macro-status" id="copper-status" style="color:var(--text-dim)">--</div>
+      <div class="macro-note" id="copper-note">AI+工业周期温度计</div>
+    </div>
+
+    <!-- WTI Oil -->
+    <div class="macro-card" id="card-oil">
+      <div class="macro-ticker">USO · 原油ETF</div>
+      <div class="macro-val" id="oil-val">--</div>
+      <div class="macro-chg" id="oil-chg">--</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="spark-oil"></canvas></div>
+      <div class="macro-status" id="oil-status" style="color:var(--text-dim)">--</div>
+      <div class="macro-note" id="oil-note">通胀核心变量</div>
+    </div>
+
+    <!-- SOX -->
+    <div class="macro-card" id="card-sox">
+      <div class="macro-ticker">SOXX · 半导体</div>
+      <div class="macro-val" id="sox-val">--</div>
+      <div class="macro-chg" id="sox-chg">--</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="spark-sox"></canvas></div>
+      <div class="macro-status" id="sox-status" style="color:var(--text-dim)">--</div>
+      <div class="macro-note" id="sox-note">AI硬件周期先行指标</div>
+    </div>
+
+    <!-- DXY -->
+    <div class="macro-card" id="card-dxy">
+      <div class="macro-ticker">DXY · 美元指数</div>
+      <div class="macro-val" id="dxy2-val">--</div>
+      <div class="macro-chg" id="dxy2-chg">--</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="spark-dxy"></canvas></div>
+      <div class="macro-status" id="dxy2-status" style="color:var(--text-dim)">--</div>
+      <div class="macro-note" id="dxy2-note">全球流动性方向</div>
+    </div>
+
+    <!-- XLU Power -->
+    <div class="macro-card" id="card-xlu">
+      <div class="macro-ticker">XLU · 电力ETF</div>
+      <div class="macro-val" id="xlu-val">--</div>
+      <div class="macro-chg" id="xlu-chg">--</div>
+      <div class="sparkline-wrap"><canvas class="sparkline" id="spark-xlu"></canvas></div>
+      <div class="macro-status" id="xlu-status" style="color:var(--text-dim)">--</div>
+      <div class="macro-note" id="xlu-note">AI用电需求代理指标</div>
+    </div>
+
+  </div>
+
+  <!-- Yield Curve -->
+  <div class="yield-box">
+    <div class="yield-title">美债收益率曲线 · Yield Curve</div>
+    <div class="yield-grid">
+      <div class="yield-item">
+        <div class="yield-label">2Y · 短债（降息预期）</div>
+        <div class="yield-val" id="us2y-val">--</div>
+        <div class="yield-chg" id="us2y-chg">--</div>
+      </div>
+      <div class="yield-item">
+        <div class="yield-label">10Y · 长债（经济预期）</div>
+        <div class="yield-val" id="us10y-val2">--</div>
+        <div class="yield-chg" id="us10y-chg2">--</div>
+      </div>
+      <div class="yield-item">
+        <div class="yield-label">利差 10Y−2Y</div>
+        <div class="yield-val" id="spread-val">--</div>
+        <div class="yield-chg" id="spread-status" style="font-size:11px;margin-top:4px;font-family:var(--mono)">--</div>
+      </div>
+    </div>
+    <div class="yield-spread-box">
+      <div>
+        <div class="yield-spread-label">曲线形态判断</div>
+        <div class="yield-spread-val" id="curve-label" style="font-size:16px;margin-top:4px">--</div>
+      </div>
+      <div class="yield-spread-note" id="curve-note">--</div>
+    </div>
+  </div>
+
+  <!-- Phase reference -->
+  <div style="font-family:var(--mono);font-size:9px;letter-spacing:0.2em;color:var(--text-dim);text-transform:uppercase;margin-bottom:12px;">宏观阶段参考</div>
+  <div class="phase-ref-grid" id="phase-ref-grid"></div>
+
+  <footer>
+    数据来源：Yahoo Finance · FRED · 仅供参考，不构成投资建议<br>
+    铜价用COPX铜矿ETF代替期货，原油用USO代替WTI期货，US10Y为^TNX指数
+  </footer>
+
+</div>
+
+<script>
+const PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+async function fetchWithProxy(url) {
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (res.ok) return res;
+  } catch(e) {}
+  for (const proxy of PROXIES) {
+    try {
+      const res = await fetch(proxy(url), { signal: AbortSignal.timeout(6000) });
+      if (res.ok) return res;
+    } catch(e) {}
+  }
+  throw new Error('all proxies failed');
+}
+
+async function fetchYahoo(symbol, period) {
+  period = period || '1mo';
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${period}`;
+    const res = await fetchWithProxy(url);
+    const data = await res.json();
+    const result = data.chart?.result?.[0];
+    if (!result) throw new Error('no result');
+    const closes = result.indicators?.quote?.[0]?.close?.filter(x => x != null);
+    if (!closes?.length) throw new Error('no data');
+    const price = closes[closes.length - 1];
+    const prev = closes.length > 1 ? closes[closes.length - 2] : null;
+    const change = prev ? ((price - prev) / prev) * 100 : null;
+    return { price, change, history: closes };
+  } catch(e) {
+    return { price: null, change: null, history: [], error: e.message };
+  }
+}
+
+// For bonds — Yahoo gives price, we need yield
+// Use ETF prices as proxies: TLT=20yr, SHY=2yr
+async function fetchBondYield(symbol, approxDuration) {
+  // Use ^TNX for 10Y, ^IRX for 13w, ^FVX for 5Y
+  return fetchYahoo(symbol, '1mo');
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+function setColor(id, color) {
+  const el = document.getElementById(id);
+  if (el) el.style.color = color;
+}
+function colorChange(val) {
+  if (val === null || isNaN(val)) return 'var(--text-dim)';
+  return val >= 0 ? 'var(--green)' : 'var(--red)';
+}
+function fmtChg(val, suffix='%') {
+  if (val === null || isNaN(val)) return '--';
+  return (val >= 0 ? '+' : '') + val.toFixed(2) + suffix;
+}
+
+// Draw sparkline on canvas
+function drawSparkline(canvasId, data, color) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !data || data.length < 2) return;
+  const ctx = canvas.getContext('2d');
+  const w = canvas.offsetWidth || 200;
+  const h = canvas.offsetHeight || 36;
+  canvas.width = w;
+  canvas.height = h;
+  ctx.clearRect(0, 0, w, h);
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const pad = 4;
+
+  const points = data.map((v, i) => ({
+    x: pad + (i / (data.length - 1)) * (w - pad * 2),
+    y: h - pad - ((v - min) / range) * (h - pad * 2)
+  }));
+
+  // Fill gradient
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color.replace(')', ', 0.15)').replace('var(--', 'rgba(').replace(')', ')'));
+  grad.addColorStop(1, 'transparent');
+
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, h);
+  points.forEach(p => ctx.lineTo(p.x, p.y));
+  ctx.lineTo(points[points.length-1].x, h);
+  ctx.closePath();
+
+  // Simple fill
+  ctx.fillStyle = 'rgba(255,255,255,0.03)';
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) {
+    const prev = points[i-1], curr = points[i];
+    const cpx = (prev.x + curr.x) / 2;
+    ctx.bezierCurveTo(cpx, prev.y, cpx, curr.y, curr.x, curr.y);
+  }
+
+  // Resolve CSS var color
+  const resolvedColor = getComputedStyle(document.documentElement)
+    .getPropertyValue(color.replace('var(', '').replace(')', '').trim()) || '#00d4a0';
+
+  ctx.strokeStyle = resolvedColor.trim();
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Last dot
+  const last = points[points.length - 1];
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = resolvedColor.trim();
+  ctx.fill();
+}
+
+// Macro phases
+const PHASES = [
+  {
+    id: 'ai_boom',
+    name: 'AI扩张期',
+    color: 'var(--blue)',
+    desc: '半导体强势、铜价上涨、利率稳定、美元中性——AI与工业需求共振，风险资产顺风。QQQ/BTC/SLV均受益。',
+    conditions: ['SOXX强势 >+5%', '铜价上涨', '10Y利率 <4.5%', '美元中性'],
+    check: (d) => d.sox > 0 && d.copper > 0 && d.us10y < 4.5 && d.dxy < 104
+  },
+  {
+    id: 'stagflation',
+    name: '滞胀压力期',
+    color: 'var(--orange)',
+    desc: '油价飙涨、通胀回升、美债利率上行——科技估值承压，黄金受益，白银工业逻辑受损，QQQ需谨慎。',
+    conditions: ['油价 >$90', '10Y利率 >4.8%', '铜价震荡', 'SOXX承压'],
+    check: (d) => d.oil > 90 && d.us10y > 4.8
+  },
+  {
+    id: 'recession_risk',
+    name: '衰退预警期',
+    color: 'var(--red)',
+    desc: '铜价回落、半导体走弱、收益率曲线倒挂——工业需求萎缩，白银工业逻辑受损，黄金防御性凸显。',
+    conditions: ['铜价下跌', 'SOXX走弱', '2Y > 10Y倒挂', '美元走强'],
+    check: (d) => d.copper < 0 && d.sox < 0 && d.spread < 0
+  },
+  {
+    id: 'easing',
+    name: '流动性宽松期',
+    color: 'var(--green)',
+    desc: '美债利率下行、美元走弱——流动性改善，BTC/黄金/白银齐涨，成长股重新获得估值支撑。',
+    conditions: ['10Y利率下行', '美元走弱', 'BTC强势', '贵金属上涨'],
+    check: (d) => d.us10y < 4.0 && d.dxyChg < -0.5
+  },
+  {
+    id: 'neutral',
+    name: '震荡观望期',
+    color: 'var(--yellow)',
+    desc: '各项指标无明显方向，市场处于数据等待期。维持现有仓位，等待明确信号再动。',
+    conditions: ['指标无明显方向', '等待催化剂'],
+    check: () => true // fallback
+  }
+];
+
+function detectPhase(data) {
+  for (const phase of PHASES) {
+    if (phase.id !== 'neutral' && phase.check(data)) return phase;
+  }
+  return PHASES.find(p => p.id === 'neutral');
+}
+
+function renderPhaseRef(activeId) {
+  const grid = document.getElementById('phase-ref-grid');
+  grid.innerHTML = PHASES.map(p => `
+    <div class="phase-ref-card ${p.id === activeId ? 'active' : ''}" style="--phase-color:${p.color}">
+      <div class="phase-ref-name">${p.name}</div>
+      <div class="phase-ref-conditions">${p.conditions.map(c => '· ' + c).join('<br>')}</div>
+    </div>
+  `).join('');
+}
+
+async function loadData() {
+  document.getElementById('loader').style.display = 'flex';
+  document.getElementById('error-box').style.display = 'none';
+
+  const now = new Date();
+  setText('today-date', now.toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' }));
+  setText('last-update', '更新于 ' + now.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' }));
+
+  const errors = [];
+
+  const [tnxData, twoxData, copperData, oilData, soxData, dxyData, xluData] = await Promise.all([
+    fetchYahoo('^TNX', '1mo'),
+    fetchYahoo('^FVX', '1mo'),
+    fetchYahoo('COPX', '1mo'),
+    fetchYahoo('USO', '1mo'),
+    fetchYahoo('SOXX', '1mo'),
+    fetchYahoo('DX-Y.NYB', '1mo'),
+    fetchYahoo('XLU', '1mo'),
+  ]);
+
+  const twoYData = twoxData;
+
+  // US10Y
+  let us10y = null;
+  if (tnxData.price !== null) {
+    us10y = tnxData.price / 10; // ^TNX is in tenths of percent (e.g. 42.1 = 4.21%)
+    // Actually ^TNX returns the yield directly as e.g. 4.21
+    us10y = tnxData.price;
+    const color = us10y > 4.8 ? 'var(--red)' : us10y > 4.3 ? 'var(--orange)' : us10y < 3.8 ? 'var(--green)' : 'var(--yellow)';
+    const status = us10y > 4.8 ? '科技承压' : us10y > 4.3 ? '偏紧' : us10y < 3.8 ? '宽松' : '中性';
+    const note = us10y > 4.8 ? 'AI估值承压，纳指高估值风险上升' : us10y > 4.3 ? '利率偏高，成长股估值受限' : us10y < 3.8 ? '流动性宽松，成长股估值支撑强' : '利率中性，AI牛市可维持';
+    setText('us10y-val', us10y.toFixed(2) + '%');
+    setColor('us10y-val', color);
+    setText('us10y-chg', fmtChg(tnxData.change) + ' 较昨日');
+    setColor('us10y-chg', colorChange(tnxData.change ? -tnxData.change : null));
+    setText('us10y-status', status);
+    setColor('us10y-status', color);
+    setText('us10y-note', note);
+    // also fill yield curve panel
+    setText('us10y-val2', us10y.toFixed(2) + '%');
+    setColor('us10y-val2', color);
+    setText('us10y-chg2', fmtChg(tnxData.change) + ' 较昨日');
+    setColor('us10y-chg2', colorChange(tnxData.change ? -tnxData.change : null));
+    document.getElementById('card-us10y').className = 'macro-card ' + (us10y > 4.8 ? 'signal-danger' : us10y > 4.3 ? 'signal-warn' : 'signal-good');
+    drawSparkline('spark-us10y', tnxData.history, color);
+  } else { errors.push('US10Y'); }
+
+  // US2Y — ^IRX is 13-week T-bill, use as short rate proxy
+  let us2y = null;
+  if (twoYData.price !== null) {
+    us2y = twoYData.price;
+    setText('us2y-val', us2y.toFixed(2) + '%');
+    setColor('us2y-val', 'var(--text)');
+    setText('us2y-chg', fmtChg(twoYData.change) + ' 较昨日');
+    setColor('us2y-chg', colorChange(twoYData.change ? -twoYData.change : null));
+  }
+
+  // Yield spread
+  if (us10y !== null && us2y !== null) {
+    const spread = us10y - us2y;
+    const spreadColor = spread < 0 ? 'var(--red)' : spread < 0.3 ? 'var(--yellow)' : 'var(--green)';
+    setText('spread-val', (spread >= 0 ? '+' : '') + spread.toFixed(2) + '%');
+    setColor('spread-val', spreadColor);
+    const curveLabel = spread < 0 ? '收益率倒挂 ⚠' : spread < 0.3 ? '曲线趋平' : '正常形态';
+    const curveNote = spread < 0 ? '短债利率高于长债，历史上衰退预警信号。不必恐慌，但需密切关注信用市场和就业数据。' : spread < 0.3 ? '曲线接近平坦，市场对未来经济预期偏谨慎，降息预期升温。' : '收益率曲线正常，经济扩张预期良好，AI牛市估值环境健康。';
+    setText('spread-status', curveLabel);
+    setColor('spread-status', spreadColor);
+    setText('curve-label', curveLabel);
+    setColor('curve-label', spreadColor);
+    setText('curve-note', curveNote);
+  }
+
+  // Copper
+  let copperChg = null;
+  if (copperData.price !== null) {
+    copperChg = copperData.change;
+    const color = copperData.change > 1 ? 'var(--green)' : copperData.change < -1 ? 'var(--red)' : 'var(--yellow)';
+    const status = copperData.change > 2 ? 'AI需求强' : copperData.change > 0 ? '稳健' : copperData.change < -2 ? '⚠ 走弱' : '震荡';
+    const note = copperData.change > 1 ? '工业与AI需求扩张，资源周期向好' : copperData.change < -1 ? '经济需求预期走弱，白银工业逻辑承压' : '铜价横盘，等待方向';
+    setText('copper-val', '$' + copperData.price.toFixed(2));
+    setColor('copper-val', color);
+    setText('copper-chg', fmtChg(copperData.change) + ' 较昨日');
+    setColor('copper-chg', colorChange(copperData.change));
+    setText('copper-status', status);
+    setColor('copper-status', color);
+    setText('copper-note', note);
+    document.getElementById('card-copper').className = 'macro-card ' + (copperData.change < -1 ? 'signal-warn' : copperData.change > 1 ? 'signal-good' : '');
+    drawSparkline('spark-copper', copperData.history, color);
+  } else { errors.push('铜价'); }
+
+  // Oil
+  let oilPrice = null;
+  if (oilData.price !== null) {
+    oilPrice = oilData.price;
+    const color = oilData.price > 90 ? 'var(--red)' : oilData.price > 80 ? 'var(--orange)' : oilData.price < 65 ? 'var(--green)' : 'var(--yellow)';
+    const status = oilData.price > 90 ? '通胀警告' : oilData.price > 80 ? '偏高' : oilData.price < 65 ? '需求弱' : '正常';
+    const note = oilData.price > 90 ? '油价过高，通胀恶化风险，美联储难降息' : oilData.price > 80 ? '油价偏高，通胀压力存在，需关注走势' : oilData.price < 65 ? '油价低迷，可能反映经济需求走弱' : '油价正常，通胀压力可控';
+    setText('oil-val', '$' + oilData.price.toFixed(1));
+    setColor('oil-val', color);
+    setText('oil-chg', fmtChg(oilData.change) + ' 较昨日');
+    setColor('oil-chg', colorChange(oilData.change));
+    setText('oil-status', status);
+    setColor('oil-status', color);
+    setText('oil-note', note);
+    document.getElementById('card-oil').className = 'macro-card ' + (oilData.price > 90 ? 'signal-danger' : oilData.price > 80 ? 'signal-warn' : '');
+    drawSparkline('spark-oil', oilData.history, color);
+  } else { errors.push('油价'); }
+
+  // SOXX
+  let soxChg = null;
+  if (soxData.price !== null) {
+    soxChg = soxData.change;
+    const color = soxData.change > 1 ? 'var(--green)' : soxData.change < -1 ? 'var(--red)' : 'var(--yellow)';
+    const status = soxData.change > 2 ? 'AI扩张' : soxData.change > 0 ? '稳健' : soxData.change < -2 ? '⚠ 走弱' : '震荡';
+    const note = soxData.change > 1 ? '半导体强势，AI硬件需求持续扩张' : soxData.change < -1 ? '半导体走弱，AI周期可能降温，QQQ注意' : '半导体横盘，等待AI需求新催化剂';
+    setText('sox-val', '$' + soxData.price.toFixed(2));
+    setColor('sox-val', color);
+    setText('sox-chg', fmtChg(soxData.change) + ' 较昨日');
+    setColor('sox-chg', colorChange(soxData.change));
+    setText('sox-status', status);
+    setColor('sox-status', color);
+    setText('sox-note', note);
+    document.getElementById('card-sox').className = 'macro-card ' + (soxData.change < -2 ? 'signal-warn' : soxData.change > 1 ? 'signal-good' : '');
+    drawSparkline('spark-sox', soxData.history, color);
+  } else { errors.push('SOXX'); }
+
+  // DXY
+  let dxyChg = null;
+  if (dxyData.price !== null) {
+    dxyChg = dxyData.change;
+    const alert = dxyData.change > 1.5;
+    const color = dxyData.price > 106 ? 'var(--red)' : dxyData.price > 103 ? 'var(--orange)' : dxyData.price < 100 ? 'var(--green)' : 'var(--text-dim)';
+    const status = dxyData.price > 106 ? '强势避险' : dxyData.price > 103 ? '偏强' : dxyData.price < 100 ? '走弱利好' : '中性';
+    const note = dxyData.price > 104 ? '美元强势，BTC/金银/新兴市场承压' : dxyData.price < 100 ? '美元走弱，流动性宽松，BTC/黄金/白银利好' : '美元中性，流动性环境平稳';
+    setText('dxy2-val', dxyData.price.toFixed(2));
+    setColor('dxy2-val', color);
+    setText('dxy2-chg', fmtChg(dxyData.change) + ' 较昨日');
+    setColor('dxy2-chg', colorChange(dxyData.change ? -dxyData.change : null));
+    setText('dxy2-status', status);
+    setColor('dxy2-status', color);
+    setText('dxy2-note', note);
+    document.getElementById('card-dxy').className = 'macro-card ' + (dxyData.price > 106 ? 'signal-danger' : dxyData.price > 103 ? 'signal-warn' : dxyData.price < 100 ? 'signal-good' : '');
+    drawSparkline('spark-dxy', dxyData.history, color);
+  } else { errors.push('DXY'); }
+
+  // XLU
+  if (xluData.price !== null) {
+    const color = xluData.change > 0.5 ? 'var(--green)' : xluData.change < -0.5 ? 'var(--red)' : 'var(--text-dim)';
+    const note = xluData.change > 0.5 ? '电力需求预期上升，AI用电逻辑强化' : xluData.change < -1 ? '电力ETF走弱，防御属性增强可能意味着避险' : '电力稳定，AI用电基本面持续';
+    setText('xlu-val', '$' + xluData.price.toFixed(2));
+    setColor('xlu-val', color);
+    setText('xlu-chg', fmtChg(xluData.change) + ' 较昨日');
+    setColor('xlu-chg', colorChange(xluData.change));
+    setText('xlu-status', xluData.change > 0.5 ? '扩张' : xluData.change < -0.5 ? '走弱' : '稳定');
+    setColor('xlu-status', color);
+    setText('xlu-note', note);
+    drawSparkline('spark-xlu', xluData.history, color);
+  } else { errors.push('XLU'); }
+
+  // Phase detection
+  const phaseData = {
+    us10y: us10y || 4.3,
+    copper: copperChg || 0,
+    oil: oilPrice || 75,
+    sox: soxChg || 0,
+    spread: (us10y && us2y) ? us10y - us2y : 0.5,
+    dxy: dxyData.price || 102,
+    dxyChg: dxyChg || 0
+  };
+
+  const phase = detectPhase(phaseData);
+  document.getElementById('phase-banner').style.setProperty('--phase-color', phase.color);
+  setText('phase-title', phase.name);
+  setText('phase-desc', phase.desc);
+  document.getElementById('phase-signals').innerHTML = phase.conditions.map(c =>
+    `<div class="phase-signal-item"><div class="phase-dot" style="background:${phase.color}"></div>${c}</div>`
+  ).join('');
+  renderPhaseRef(phase.id);
+
+  // Errors
+  if (errors.length) {
+    document.getElementById('error-box').style.display = 'block';
+    document.getElementById('error-box').innerHTML = `<div class="error-note">⚠ 拉取失败：${errors.join('、')}，请稍后刷新。</div>`;
+  }
+
+  document.getElementById('loader').style.display = 'none';
+  const app = document.getElementById('app');
+  app.style.opacity = '1';
+  app.style.transition = 'opacity 0.4s ease';
+
+  // Draw sparklines after render
+  setTimeout(() => {
+    if (tnxData.history?.length) drawSparkline('spark-us10y', tnxData.history, tnxData.price > 4.8 ? '--red' : tnxData.price > 4.3 ? '--orange' : '--green');
+  }, 100);
+}
+
+setTimeout(() => {
+  const loader = document.getElementById('loader');
+  const app = document.getElementById('app');
+  if (loader && loader.style.display !== 'none') {
+    loader.style.display = 'none';
+    app.style.opacity = '1';
+    app.style.transition = 'opacity 0.4s ease';
+  }
+}, 15000);
+
+loadData();
+</script>
+</body>
+</html>
