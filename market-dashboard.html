@@ -401,6 +401,26 @@
   .dd-guide { font-family: var(--mono); font-size: 9px; color: var(--text-muted); text-align: center; letter-spacing: 0.05em; padding-top: 8px; border-top: 1px solid var(--border); }
   @media (max-width: 600px) { .dd-grid { grid-template-columns: 1fr; } }
 
+  /* BTC Box */
+  .btc-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .btc-header { margin-bottom: 16px; padding-bottom: 14px; border-bottom: 1px solid var(--border); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:10px; }
+  .btc-title-row { display:flex; align-items:center; gap:10px; }
+  .btc-ticker { font-family:var(--mono); font-size:18px; font-weight:700; color:#f7931a; }
+  .btc-name { font-family:var(--mono); font-size:9px; letter-spacing:0.15em; color:var(--text-muted); text-transform:uppercase; }
+  .btc-price-row { display:flex; align-items:baseline; }
+  .btc-fg-row { display:grid; grid-template-columns: 1fr 1fr 2fr; gap:16px; }
+  .btc-fg-block, .btc-signal-block, .btc-context-block { }
+  .btc-fg-label-top { font-family:var(--mono); font-size:8px; letter-spacing:0.15em; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px; }
+  .btc-fg-num-row { display:flex; align-items:baseline; gap:8px; margin-top:6px; }
+  .btc-fg-num { font-family:var(--mono); font-size:32px; font-weight:700; }
+  .btc-fg-sub { font-size:11px; }
+  @media(max-width:600px){ .btc-fg-row{ grid-template-columns:1fr 1fr; } .btc-context-block{ grid-column:1/-1; } }
+
   /* GSR Box */
   .gsr-box {
     background: var(--surface);
@@ -607,6 +627,40 @@
     </div>
   </div>
 
+  <!-- BTC Panel -->
+  <div class="btc-box">
+    <div class="btc-header">
+      <div class="btc-title-row">
+        <span class="btc-ticker">BTC</span>
+        <span class="btc-name">Bitcoin · 流动性风向标</span>
+      </div>
+      <div class="btc-price-row">
+        <span id="btc-price" style="font-family:var(--mono);font-size:28px;font-weight:700;color:var(--text)">--</span>
+        <span id="btc-chg" style="font-family:var(--mono);font-size:13px;color:var(--text-dim);margin-left:10px">--</span>
+      </div>
+    </div>
+    <div class="btc-fg-row">
+      <div class="btc-fg-block">
+        <div class="btc-fg-label-top">BTC 专属恐惧贪婪</div>
+        <div class="btc-fg-num-row">
+          <span class="btc-fg-num" id="btc-fg-val">--</span>
+          <span class="btc-fg-sub" id="btc-fg-label">--</span>
+        </div>
+      </div>
+      <div class="btc-signal-block">
+        <div class="btc-fg-label-top">操作参考</div>
+        <div id="btc-signal" style="font-size:13px;color:var(--text-dim);margin-top:6px">--</div>
+      </div>
+      <div class="btc-context-block">
+        <div class="btc-fg-label-top">与你持仓的关系</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.6">
+          BTC涨 → 流动性宽松 → QQQ/SLV顺风<br>
+          BTC跌+DXY涨 → 流动性收紧 → 全仓承压
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Gold Silver Ratio -->
   <div class="gsr-box" id="gsr-box">
     <div class="gsr-header">
@@ -809,6 +863,20 @@ async function fetchYahoo(symbol, range='5d') {
   }
 }
 
+async function fetchBtcFearGreed() {
+  try {
+    const url = 'https://api.alternative.me/fng/?limit=1';
+    const res = await fetchWithProxy(url);
+    const data = await res.json();
+    const score = parseInt(data?.data?.[0]?.value);
+    const label = data?.data?.[0]?.value_classification;
+    if (isNaN(score)) throw new Error('bad score');
+    return { score, label };
+  } catch(e) {
+    return { score: null, label: null, error: e.message };
+  }
+}
+
 async function fetchFearGreed() {
   try {
     const url = 'https://production.dataviz.cnn.io/index/fearandgreed/graphdata';
@@ -849,7 +917,7 @@ async function loadData() {
 
   const errors = [];
 
-  const [vixData, spyData, hygData, jnkData, dxyData, qqqData, fgData, gldData, slvData, vooData] = await Promise.all([
+  const [vixData, spyData, hygData, jnkData, dxyData, qqqData, fgData, gldData, slvData, vooData, btcData] = await Promise.all([
     fetchYahoo('^VIX'),
     fetchYahoo('SPY'),
     fetchYahoo('HYG'),
@@ -859,7 +927,8 @@ async function loadData() {
     fetchFearGreed(),
     fetchYahoo('GLD'),
     fetchYahoo('SLV'),
-    fetchYahoo('VOO')
+    fetchYahoo('VOO'),
+    fetchYahoo('BTC-USD')
   ]);
 
   // VIX
@@ -940,7 +1009,7 @@ async function loadData() {
   } else { setText('qqq-val', 'N/A'); }
 
   // QQQ + VOO drawdown from 52w high
-  const [qqqDD, vooDD] = await Promise.all([fetchDrawdown('QQQ'), fetchDrawdown('VOO')]);
+  const [qqqDD, vooDD, btcFgData] = await Promise.all([fetchDrawdown('QQQ'), fetchDrawdown('VOO'), fetchBtcFearGreed()]);
 
   function renderDrawdown(ddData, priceId, chgId, ddId, ddBarId, ddLabelId) {
     if (!ddData) return;
@@ -967,6 +1036,27 @@ async function loadData() {
     setColor('voo-price', colorForChange(vooData.change));
     setText('voo-chg', fmtChange(vooData.change));
     setColor('voo-chg', colorForChange(vooData.change));
+  }
+
+  // BTC
+  if (btcData.price !== null) {
+    setText('btc-price', '$' + btcData.price.toLocaleString('en-US', {maximumFractionDigits: 0}));
+    setColor('btc-price', colorForChange(btcData.change));
+    setText('btc-chg', fmtChange(btcData.change));
+    setColor('btc-chg', colorForChange(btcData.change));
+  }
+  if (btcFgData.score !== null) {
+    const bfg = btcFgData.score;
+    const bfgColor = bfg <= 25 ? 'var(--red)' : bfg <= 45 ? 'var(--orange)' : bfg <= 55 ? 'var(--yellow)' : bfg <= 75 ? 'var(--green)' : 'var(--blue)';
+    setText('btc-fg-val', bfg);
+    setColor('btc-fg-val', bfgColor);
+    setText('btc-fg-label', btcFgData.label || '');
+    setColor('btc-fg-label', bfgColor);
+    // BTC signal
+    const btcSignal = bfg >= 75 ? '过度贪婪·注意风险' : bfg >= 55 ? '贪婪·可持有' : bfg >= 45 ? '中性' : bfg >= 25 ? '恐惧·考虑加仓' : '极度恐惧·积极加仓';
+    const btcSigColor = bfg >= 75 ? 'var(--blue)' : bfg >= 55 ? 'var(--green)' : bfg >= 45 ? 'var(--yellow)' : 'var(--orange)';
+    setText('btc-signal', btcSignal);
+    setColor('btc-signal', btcSigColor);
   }
 
   // Gold-Silver Ratio
