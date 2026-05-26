@@ -797,15 +797,39 @@ async function loadData() {
   setText('last-update', '更新于 ' + now.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' }));
 
   const errors = [];
-  const [tnxData, twoYData, copperData, oilData, soxData, dxyData, xluData] = await Promise.all([
-    fetchFred('DGS10'),
-    fetchFred('DGS2'),
+  // TLT=20yr bond ETF (price inversely tracks 10Y yield)
+  // SHY=1-3yr bond ETF (tracks short rates / 2Y yield)
+  const [tltData, shyData, copperData, oilData, soxData, dxyData, xluData] = await Promise.all([
+    fetchYahoo('TLT'),
+    fetchYahoo('SHY'),
     fetchYahoo('COPX'),
     fetchYahoo('USO'),
     fetchYahoo('SOXX'),
     fetchYahoo('DX-Y.NYB'),
     fetchYahoo('XLU'),
   ]);
+
+  // Convert TLT/SHY price to approximate yield
+  // TLT: price ~$85-100 maps to ~4-5% yield (inverse, duration ~17yr)
+  // formula: yield ≈ (100/price - 1) * (1/duration) * 100 + base
+  // Simpler calibration: TLT $90 ≈ 4.5%, $95 ≈ 4.0%, $100 ≈ 3.5%
+  function tltToYield(price) {
+    if (!price) return null;
+    return Math.max(1, Math.min(8, (9300 / price - 58) / 10));
+  }
+  function shyToYield(price) {
+    if (!price) return null;
+    return Math.max(0.5, Math.min(7, (8600 / price - 81) / 10));
+  }
+
+  const us10yVal = tltToYield(tltData.price);
+  const us2yVal = shyToYield(shyData.price);
+  // Change: TLT price up = yield down, so invert
+  const us10yChg = tltData.change ? -tltData.change * 0.15 : null;
+  const us2yChg = shyData.change ? -shyData.change * 0.08 : null;
+
+  const tnxData = { price: us10yVal, change: us10yChg };
+  const twoYData = { price: us2yVal, change: us2yChg };
 
   // US10Y
   let us10y = null;
@@ -879,9 +903,10 @@ async function loadData() {
   let oilPrice = null;
   if (oilData.price !== null) {
     oilPrice = oilData.price;
-    const color = oilData.price > 90 ? 'var(--red)' : oilData.price > 80 ? 'var(--orange)' : oilData.price < 65 ? 'var(--green)' : 'var(--yellow)';
-    const status = oilData.price > 90 ? '通胀警告' : oilData.price > 80 ? '偏高' : oilData.price < 65 ? '需求弱' : '正常';
-    const note = oilData.price > 90 ? '油价过高，通胀恶化风险，美联储难降息' : oilData.price > 80 ? '油价偏高，通胀压力存在，需关注走势' : oilData.price < 65 ? '油价低迷，可能反映经济需求走弱' : '油价正常，通胀压力可控';
+    // USO ETF price: ~$130+=high oil, ~$100-130=normal, ~$80-=low demand
+    const color = oilData.price > 135 ? 'var(--red)' : oilData.price > 115 ? 'var(--orange)' : oilData.price < 85 ? 'var(--green)' : 'var(--yellow)';
+    const status = oilData.price > 135 ? '通胀警告' : oilData.price > 115 ? '偏高' : oilData.price < 85 ? '需求偏弱' : '正常';
+    const note = oilData.price > 135 ? '油价过高，通胀恶化风险，美联储难降息' : oilData.price > 115 ? '油价偏高，通胀压力存在，需关注走势' : oilData.price < 85 ? '油价低迷，可能反映经济需求走弱' : '油价正常，通胀压力可控';
     setText('oil-val', '$' + oilData.price.toFixed(1));
     setColor('oil-val', color);
     setText('oil-chg', fmtChg(oilData.change) + ' 较昨日');
