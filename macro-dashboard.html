@@ -742,8 +742,8 @@ const PHASES = [
     name: '滞胀压力期',
     color: 'var(--orange)',
     desc: '油价飙涨、通胀回升、美债利率上行——科技估值承压，黄金受益，白银工业逻辑受损，QQQ需谨慎。',
-    conditions: ['油价 >$90', '10Y利率 >4.8%', '铜价震荡', 'SOXX承压'],
-    check: (d) => d.oil > 90 && d.us10y > 4.8
+    conditions: ['USO >$125', '10Y利率 >4.8%', '铜价震荡', 'SOXX承压'],
+    check: (d) => d.oil > 125 && d.us10y > 4.8
   },
   {
     id: 'recession_risk',
@@ -815,11 +815,13 @@ async function loadData() {
   // Simpler calibration: TLT $90 ≈ 4.5%, $95 ≈ 4.0%, $100 ≈ 3.5%
   function tltToYield(price) {
     if (!price) return null;
-    return Math.max(1, Math.min(8, (9300 / price - 58) / 10));
+    // Linear calibration: TLT $90=4.3%, $85=4.57%, $80=4.84%
+    return Math.max(1.5, Math.min(7, -0.054 * price + 9.16));
   }
   function shyToYield(price) {
     if (!price) return null;
-    return Math.max(0.5, Math.min(7, (8600 / price - 81) / 10));
+    // Linear calibration: SHY $83=4.3%, $85=4.1%
+    return Math.max(0.5, Math.min(6, -0.1 * price + 12.6));
   }
 
   const us10yVal = tltToYield(tltData.price);
