@@ -593,6 +593,25 @@
 </div>
 
 <script>
+const FRED_KEY = '8d7b1a5867f82370eea008e778181987';
+
+async function fetchFred(seriesId) {
+  try {
+    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('fred failed');
+    const data = await res.json();
+    const obs = data.observations?.filter(o => o.value !== '.');
+    if (!obs?.length) throw new Error('no data');
+    const latest = parseFloat(obs[0].value);
+    const prev = obs.length > 1 ? parseFloat(obs[1].value) : null;
+    const change = prev ? latest - prev : null;
+    return { price: latest, change };
+  } catch(e) {
+    return { price: null, change: null, error: e.message };
+  }
+}
+
 const PROXIES = [
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -600,13 +619,10 @@ const PROXIES = [
 ];
 
 async function fetchWithProxy(url) {
-  // Try direct first
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (res.ok) return res;
   } catch(e) {}
-
-  // Try each proxy
   for (const proxy of PROXIES) {
     try {
       const res = await fetch(proxy(url), { signal: AbortSignal.timeout(6000) });
@@ -616,19 +632,15 @@ async function fetchWithProxy(url) {
   throw new Error('all proxies failed');
 }
 
-async function fetchYahoo(symbol, period) {
-  period = period || '5d';
+async function fetchYahoo(symbol) {
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${period}`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
     const res = await fetchWithProxy(url);
     const data = await res.json();
-    const result = data.chart?.result?.[0];
-    if (!result) throw new Error('no result');
-    const closes = result.indicators?.quote?.[0]?.close;
-    const latest = closes?.filter(x => x != null);
-    if (!latest?.length) throw new Error('no data');
-    const price = latest[latest.length - 1];
-    const prev = latest.length > 1 ? latest[latest.length - 2] : null;
+    const closes = data.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(x => x != null);
+    if (!closes?.length) throw new Error('no data');
+    const price = closes[closes.length - 1];
+    const prev = closes.length > 1 ? closes[closes.length - 2] : null;
     const change = prev ? ((price - prev) / prev) * 100 : null;
     return { price, change };
   } catch(e) {
@@ -636,13 +648,6 @@ async function fetchYahoo(symbol, period) {
   }
 }
 
-
-// For bonds — Yahoo gives price, we need yield
-// Use ETF prices as proxies: TLT=20yr, SHY=2yr
-async function fetchBondYield(symbol, approxDuration) {
-  // Use ^TNX for 10Y, ^IRX for 13w, ^FVX for 5Y
-  return fetchYahoo(symbol, '1mo');
-}
 
 function setText(id, val) {
   const el = document.getElementById(id);
@@ -793,8 +798,8 @@ async function loadData() {
 
   const errors = [];
   const [tnxData, twoYData, copperData, oilData, soxData, dxyData, xluData] = await Promise.all([
-    fetchYahoo('^TNX'),
-    fetchYahoo('^FVX'),
+    fetchFred('DGS10'),
+    fetchFred('DGS2'),
     fetchYahoo('COPX'),
     fetchYahoo('USO'),
     fetchYahoo('SOXX'),
