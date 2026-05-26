@@ -741,9 +741,9 @@ const PHASES = [
     id: 'stagflation',
     name: '滞胀压力期',
     color: 'var(--orange)',
-    desc: '油价飙涨、通胀回升、美债利率上行——科技估值承压，黄金受益，白银工业逻辑受损，QQQ需谨慎。',
-    conditions: ['USO >$125', '10Y利率 >4.8%', '铜价震荡', 'SOXX承压'],
-    check: (d) => d.oil > 125 && d.us10y > 4.8
+    desc: '油价明确偏高（USO >$130），通胀压力实际存在，叠加经济增长走软信号——科技估值承压，黄金受益，白银工业逻辑受损，QQQ需谨慎。',
+    conditions: ['USO >$130', '油价明确偏高', '半导体或铜走软'],
+    check: (d) => d.oil > 130 && (d.sox < 1 || d.copper < 0)
   },
   {
     id: 'recession_risk',
@@ -815,8 +815,10 @@ async function loadData() {
   // Simpler calibration: TLT $90 ≈ 4.5%, $95 ≈ 4.0%, $100 ≈ 3.5%
   function tltToYield(price) {
     if (!price) return null;
-    // Linear calibration: TLT $90=4.3%, $85=4.57%, $80=4.84%
-    return Math.max(1.5, Math.min(7, -0.054 * price + 9.16));
+    // Recalibrated anchors: TLT $87=4.59%, $93=4.10%
+    // slope = (4.10 - 4.59) / (93 - 87) = -0.0817
+    // intercept: 4.59 = m*87 + b → b = 4.59 + 0.0817*87 = 11.697
+    return Math.max(1.5, Math.min(7, -0.0817 * price + 11.697));
   }
   function shyToYield(price) {
     if (!price) return null;
@@ -905,10 +907,10 @@ async function loadData() {
   let oilPrice = null;
   if (oilData.price !== null) {
     oilPrice = oilData.price;
-    // USO ETF price: ~$130+=high oil, ~$100-130=normal, ~$80-=low demand
-    const color = oilData.price > 135 ? 'var(--red)' : oilData.price > 115 ? 'var(--orange)' : oilData.price < 85 ? 'var(--green)' : 'var(--yellow)';
-    const status = oilData.price > 135 ? '通胀警告' : oilData.price > 115 ? '偏高' : oilData.price < 85 ? '需求偏弱' : '正常';
-    const note = oilData.price > 135 ? '油价过高，通胀恶化风险，美联储难降息' : oilData.price > 115 ? '油价偏高，通胀压力存在，需关注走势' : oilData.price < 85 ? '油价低迷，可能反映经济需求走弱' : '油价正常，通胀压力可控';
+    // USO ETF price: >$145=通胀警告, $130-145=偏高, $110-130=正常, <$100=需求偏弱
+    const color = oilData.price > 145 ? 'var(--red)' : oilData.price > 130 ? 'var(--orange)' : oilData.price < 100 ? 'var(--green)' : 'var(--yellow)';
+    const status = oilData.price > 145 ? '通胀警告' : oilData.price > 130 ? '偏高' : oilData.price < 100 ? '需求偏弱' : '正常';
+    const note = oilData.price > 145 ? '油价过高，通胀恶化风险，美联储难降息' : oilData.price > 130 ? '油价偏高，通胀压力存在，需关注走势' : oilData.price < 100 ? '油价低迷，可能反映经济需求走弱' : '油价正常，通胀压力可控';
     setText('oil-val', '$' + oilData.price.toFixed(1));
     setColor('oil-val', color);
     setText('oil-chg', fmtChg(oilData.change) + ' 较昨日');
@@ -916,7 +918,7 @@ async function loadData() {
     setText('oil-status', status);
     setColor('oil-status', color);
     setText('oil-note', note);
-    document.getElementById('card-oil').className = 'macro-card ' + (oilData.price > 90 ? 'signal-danger' : oilData.price > 80 ? 'signal-warn' : '');
+    document.getElementById('card-oil').className = 'macro-card ' + (oilData.price > 145 ? 'signal-danger' : oilData.price > 130 ? 'signal-warn' : '');
     drawSparkline('spark-oil', oilData.history, color);
   } else { errors.push('油价'); }
 
