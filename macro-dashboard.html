@@ -593,25 +593,6 @@
 </div>
 
 <script>
-const FRED_KEY = '8d7b1a5867f82370eea008e778181987';
-
-async function fetchFred(seriesId) {
-  try {
-    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${FRED_KEY}&file_type=json&sort_order=desc&limit=5`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) throw new Error('fred failed');
-    const data = await res.json();
-    const obs = data.observations?.filter(o => o.value !== '.');
-    if (!obs?.length) throw new Error('no data');
-    const latest = parseFloat(obs[0].value);
-    const prev = obs.length > 1 ? parseFloat(obs[1].value) : null;
-    const change = prev ? latest - prev : null;
-    return { price: latest, change };
-  } catch(e) {
-    return { price: null, change: null, error: e.message };
-  }
-}
-
 const PROXIES = [
   url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
   url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
@@ -619,10 +600,13 @@ const PROXIES = [
 ];
 
 async function fetchWithProxy(url) {
+  // Try direct first
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
     if (res.ok) return res;
   } catch(e) {}
+
+  // Try each proxy
   for (const proxy of PROXIES) {
     try {
       const res = await fetch(proxy(url), { signal: AbortSignal.timeout(6000) });
@@ -632,15 +616,19 @@ async function fetchWithProxy(url) {
   throw new Error('all proxies failed');
 }
 
-async function fetchYahoo(symbol) {
+async function fetchYahoo(symbol, period) {
+  period = period || '5d';
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=5d`;
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=${period}`;
     const res = await fetchWithProxy(url);
     const data = await res.json();
-    const closes = data.chart?.result?.[0]?.indicators?.quote?.[0]?.close?.filter(x => x != null);
-    if (!closes?.length) throw new Error('no data');
-    const price = closes[closes.length - 1];
-    const prev = closes.length > 1 ? closes[closes.length - 2] : null;
+    const result = data.chart?.result?.[0];
+    if (!result) throw new Error('no result');
+    const closes = result.indicators?.quote?.[0]?.close;
+    const latest = closes?.filter(x => x != null);
+    if (!latest?.length) throw new Error('no data');
+    const price = latest[latest.length - 1];
+    const prev = latest.length > 1 ? latest[latest.length - 2] : null;
     const change = prev ? ((price - prev) / prev) * 100 : null;
     return { price, change };
   } catch(e) {
@@ -648,6 +636,13 @@ async function fetchYahoo(symbol) {
   }
 }
 
+
+// For bonds — Yahoo gives price, we need yield
+// Use ETF prices as proxies: TLT=20yr, SHY=2yr
+async function fetchBondYield(symbol, approxDuration) {
+  // Use ^TNX for 10Y, ^IRX for 13w, ^FVX for 5Y
+  return fetchYahoo(symbol, '1mo');
+}
 
 function setText(id, val) {
   const el = document.getElementById(id);
@@ -741,9 +736,9 @@ const PHASES = [
     id: 'stagflation',
     name: '滞胀压力期',
     color: 'var(--orange)',
-    desc: '油价明确偏高（USO >$130），通胀压力实际存在，叠加经济增长走软信号——科技估值承压，黄金受益，白银工业逻辑受损，QQQ需谨慎。',
-    conditions: ['USO >$130', '油价明确偏高', '半导体或铜走软'],
-    check: (d) => d.oil > 130 && (d.sox < 1 || d.copper < 0)
+    desc: '油价飙涨、通胀回升、美债利率上行——科技估值承压，黄金受益，白银工业逻辑受损，QQQ需谨慎。',
+    conditions: ['油价 >$90', '10Y利率 >4.8%', '铜价震荡', 'SOXX承压'],
+    check: (d) => d.oil > 90 && d.us10y > 4.8
   },
   {
     id: 'recession_risk',
@@ -797,43 +792,15 @@ async function loadData() {
   setText('last-update', '更新于 ' + now.toLocaleTimeString('zh-CN', { hour:'2-digit', minute:'2-digit' }));
 
   const errors = [];
-  // TLT=20yr bond ETF (price inversely tracks 10Y yield)
-  // SHY=1-3yr bond ETF (tracks short rates / 2Y yield)
-  const [tltData, shyData, copperData, oilData, soxData, dxyData, xluData] = await Promise.all([
-    fetchYahoo('TLT'),
-    fetchYahoo('SHY'),
+  const [tnxData, twoYData, copperData, oilData, soxData, dxyData, xluData] = await Promise.all([
+    fetchYahoo('^TNX'),
+    fetchYahoo('^FVX'),
     fetchYahoo('COPX'),
     fetchYahoo('USO'),
     fetchYahoo('SOXX'),
     fetchYahoo('DX-Y.NYB'),
     fetchYahoo('XLU'),
   ]);
-
-  // Convert TLT/SHY price to approximate yield
-  // TLT: price ~$85-100 maps to ~4-5% yield (inverse, duration ~17yr)
-  // formula: yield ≈ (100/price - 1) * (1/duration) * 100 + base
-  // Simpler calibration: TLT $90 ≈ 4.5%, $95 ≈ 4.0%, $100 ≈ 3.5%
-  function tltToYield(price) {
-    if (!price) return null;
-    // Recalibrated anchors: TLT $87=4.59%, $93=4.10%
-    // slope = (4.10 - 4.59) / (93 - 87) = -0.0817
-    // intercept: 4.59 = m*87 + b → b = 4.59 + 0.0817*87 = 11.697
-    return Math.max(1.5, Math.min(7, -0.0817 * price + 11.697));
-  }
-  function shyToYield(price) {
-    if (!price) return null;
-    // Linear calibration: SHY $83=4.3%, $85=4.1%
-    return Math.max(0.5, Math.min(6, -0.1 * price + 12.6));
-  }
-
-  const us10yVal = tltToYield(tltData.price);
-  const us2yVal = shyToYield(shyData.price);
-  // Change: TLT price up = yield down, so invert
-  const us10yChg = tltData.change ? -tltData.change * 0.15 : null;
-  const us2yChg = shyData.change ? -shyData.change * 0.08 : null;
-
-  const tnxData = { price: us10yVal, change: us10yChg };
-  const twoYData = { price: us2yVal, change: us2yChg };
 
   // US10Y
   let us10y = null;
@@ -907,10 +874,9 @@ async function loadData() {
   let oilPrice = null;
   if (oilData.price !== null) {
     oilPrice = oilData.price;
-    // USO ETF price: >$145=通胀警告, $130-145=偏高, $110-130=正常, <$100=需求偏弱
-    const color = oilData.price > 145 ? 'var(--red)' : oilData.price > 130 ? 'var(--orange)' : oilData.price < 100 ? 'var(--green)' : 'var(--yellow)';
-    const status = oilData.price > 145 ? '通胀警告' : oilData.price > 130 ? '偏高' : oilData.price < 100 ? '需求偏弱' : '正常';
-    const note = oilData.price > 145 ? '油价过高，通胀恶化风险，美联储难降息' : oilData.price > 130 ? '油价偏高，通胀压力存在，需关注走势' : oilData.price < 100 ? '油价低迷，可能反映经济需求走弱' : '油价正常，通胀压力可控';
+    const color = oilData.price > 90 ? 'var(--red)' : oilData.price > 80 ? 'var(--orange)' : oilData.price < 65 ? 'var(--green)' : 'var(--yellow)';
+    const status = oilData.price > 90 ? '通胀警告' : oilData.price > 80 ? '偏高' : oilData.price < 65 ? '需求弱' : '正常';
+    const note = oilData.price > 90 ? '油价过高，通胀恶化风险，美联储难降息' : oilData.price > 80 ? '油价偏高，通胀压力存在，需关注走势' : oilData.price < 65 ? '油价低迷，可能反映经济需求走弱' : '油价正常，通胀压力可控';
     setText('oil-val', '$' + oilData.price.toFixed(1));
     setColor('oil-val', color);
     setText('oil-chg', fmtChg(oilData.change) + ' 较昨日');
@@ -918,7 +884,7 @@ async function loadData() {
     setText('oil-status', status);
     setColor('oil-status', color);
     setText('oil-note', note);
-    document.getElementById('card-oil').className = 'macro-card ' + (oilData.price > 145 ? 'signal-danger' : oilData.price > 130 ? 'signal-warn' : '');
+    document.getElementById('card-oil').className = 'macro-card ' + (oilData.price > 90 ? 'signal-danger' : oilData.price > 80 ? 'signal-warn' : '');
     drawSparkline('spark-oil', oilData.history, color);
   } else { errors.push('油价'); }
 
