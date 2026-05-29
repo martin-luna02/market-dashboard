@@ -1146,7 +1146,7 @@ async function loadData() {
   }
 
   // Alert check
-  checkAlerts({ vix, fg, spyChange: spyData.change, hygChange: hygData.change, jnkChange: jnkData.change, dxyChange: dxyData.change, gldPrice: gldData.price !== null ? gldData.price * 10 : null });
+  checkAlerts({ vix, fg, spyChange: spyData.change, hygChange: hygData.change, jnkChange: jnkData.change, dxyChange: dxyData.change, gldPrice: gldData.price });
 
   document.getElementById('loader').style.display = 'none';
   const app = document.getElementById('app');
@@ -1162,8 +1162,8 @@ const ALERT_RULES = [
   { id: 'spy_5',   label: 'SPY 单日跌超 5%',         check: d => d.spyChange !== null && d.spyChange < -5, level: 'red',   msg: d => `SPY 单日下跌 ${d.spyChange.toFixed(2)}%，进入警戒区间` },
   { id: 'hyg_red', label: 'HYG 跌超 2%（信用压力）', check: d => d.hygChange !== null && d.hygChange < -2, level: 'red',  msg: d => `HYG 下跌 ${d.hygChange.toFixed(2)}%，信用市场出现压力` },
   { id: 'dxy_up',  label: '美元指数单日涨超 1.5%',   check: d => d.dxyChange !== null && d.dxyChange > 1.5, level: 'orange', msg: d => `美元指数单日上涨 ${d.dxyChange.toFixed(2)}%，避险情绪升温` },
-  { id: 'gold_dip_10', label: '黄金跌幅 ≥10% · GDX抄底信号', check: d => d.gldPrice !== null && d.gldPrice <= 4069, level: 'red',    msg: d => `金价 $${d.gldPrice.toFixed(0)}，回调已达10%+，GDX抄底窗口打开，建议分批买入` },
-  { id: 'gold_dip_8',  label: '黄金跌幅 ≥8% · 开始关注GDX',  check: d => d.gldPrice !== null && d.gldPrice <= 4160 && d.gldPrice > 4069, level: 'orange', msg: d => `金价 $${d.gldPrice.toFixed(0)}，回调超8%，接近抄底区间，可以开始留意GDX` },
+  { id: 'gold_dip_10', label: '黄金跌幅 ≥10% · GDX抄底信号', check: d => d.gldPrice !== null && d.gldPrice <= 407, level: 'red',    msg: d => `金价约 $${(d.gldPrice * 10.97).toFixed(0)}，回调已达10%+，GDX抄底窗口打开，建议分批买入` },
+  { id: 'gold_dip_8',  label: '黄金跌幅 ≥8% · 开始关注GDX',  check: d => d.gldPrice !== null && d.gldPrice <= 416 && d.gldPrice > 407, level: 'orange', msg: d => `金价约 $${(d.gldPrice * 10.97).toFixed(0)}，回调超8%，接近抄底区间，可以开始留意GDX` },
 ];
 
 function checkAlerts(data) {
